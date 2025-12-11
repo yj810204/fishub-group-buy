@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Container, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { useAuth } from '@/components/auth/AuthContext';
 import { isAdmin } from '@/lib/admin';
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 
 export default function NewUserPage() {
