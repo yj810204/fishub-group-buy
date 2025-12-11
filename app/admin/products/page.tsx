@@ -182,7 +182,7 @@ export default function AdminProductsPage() {
             <Table responsive>
               <thead>
                 <tr>
-                  <th>제품명</th>
+                  <th style={{ width: '200px' }}>제품명</th>
                   <th>기본 가격</th>
                   <th>참여 인원</th>
                   <th>상태</th>
@@ -191,13 +191,45 @@ export default function AdminProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((product) => (
-                  <tr key={product.id}>
-                    <td>
-                      <Link href={`/products/${product.id}`} className="text-decoration-none">
-                        {product.name}
-                      </Link>
-                    </td>
+                {products.map((product) => {
+                  const displayImage = product.imageUrls?.[0] || product.imageUrl;
+                  return (
+                    <tr key={product.id}>
+                      <td>
+                        <div className="d-flex align-items-center gap-2">
+                          {displayImage ? (
+                            <img
+                              src={displayImage}
+                              alt={product.name}
+                              style={{
+                                width: '50px',
+                                height: '50px',
+                                objectFit: 'cover',
+                                borderRadius: '4px',
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: '50px',
+                                height: '50px',
+                                backgroundColor: '#f0f0f0',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#999',
+                                fontSize: '12px',
+                              }}
+                            >
+                              <i className="bi bi-image"></i>
+                            </div>
+                          )}
+                          <Link href={`/products/${product.id}`} className="text-decoration-none">
+                            {product.name}
+                          </Link>
+                        </div>
+                      </td>
                     <td>{product.basePrice.toLocaleString()}원</td>
                     <td>{product.currentParticipants}명</td>
                     <td>
@@ -302,7 +334,8 @@ export default function AdminProductsPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </Table>
           )}
