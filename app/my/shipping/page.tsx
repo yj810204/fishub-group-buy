@@ -213,12 +213,15 @@ export default function ShippingAddressPage() {
                   placeholder="우편번호"
                   required
                   readOnly
+                  className="flex-grow-1"
                 />
                 <Button
-                  variant="outline-secondary"
+                  variant="primary"
                   onClick={handleSearchAddress}
                   type="button"
+                  style={{ whiteSpace: 'nowrap', minWidth: '120px' }}
                 >
+                  <i className="bi bi-search me-1"></i>
                   주소 검색
                 </Button>
               </div>
