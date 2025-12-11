@@ -181,7 +181,6 @@ export const signInWithEmail = async (
       updatedAt: userData.updatedAt?.toDate(),
     };
   } catch (error: any) {
-    console.error('이메일 로그인 오류:', error);
     // 원본 오류의 code를 유지하면서 메시지만 변경
     if (error.code === 'auth/user-not-found') {
       error.message = '등록되지 않은 이메일입니다.';
@@ -194,6 +193,8 @@ export const signInWithEmail = async (
       error.message = '올바른 이메일 형식이 아닙니다.';
       throw error;
     }
+    // 예상치 못한 오류만 콘솔에 표시
+    console.error('이메일 로그인 오류:', error);
     throw error;
   }
 };

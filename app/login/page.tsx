@@ -180,7 +180,6 @@ export default function LoginPage() {
       await signInWithEmail(emailFormData.email, emailFormData.password);
       router.push('/');
     } catch (error: any) {
-      console.error('이메일 로그인 오류:', error);
       // signInWithEmail에서 이미 적절한 오류 메시지로 변환했으므로
       // error.message를 우선 사용
       if (error.code === 'auth/user-not-found') {
@@ -197,6 +196,8 @@ export default function LoginPage() {
           setError(error.message || '비밀번호가 올바르지 않습니다.');
         }
       } else {
+        // 예상치 못한 오류만 콘솔에 표시
+        console.error('이메일 로그인 오류:', error);
         // 기타 오류는 변환된 메시지 사용
         setError(error.message || '로그인에 실패했습니다.');
       }
