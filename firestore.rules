@@ -42,8 +42,15 @@ service cloud.firestore {
     match /products/{productId} {
       allow read: if true; // 비로그인 사용자도 읽기 가능
       allow create: if isAdmin(); // 최고관리자만 생성 가능
-      allow update: if request.auth != null && 
-        (resource.data.createdBy == request.auth.uid || isAdmin());
+      // 업데이트: 제품 생성자/관리자는 모든 필드 수정 가능, 일반 사용자는 currentParticipants만 수정 가능 (참여/취소)
+      allow update: if request.auth != null && (
+        resource.data.createdBy == request.auth.uid || 
+        isAdmin() ||
+        // 일반 사용자는 currentParticipants 필드만 업데이트 가능
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentParticipants']) &&
+         request.resource.data.currentParticipants is int &&
+         resource.data.currentParticipants is int)
+      );
       allow delete: if request.auth != null && 
         (resource.data.createdBy == request.auth.uid || isAdmin());
     }
