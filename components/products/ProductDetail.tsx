@@ -796,7 +796,14 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                       </Button>
                     </InputGroup>
                     <div className="mt-2 text-muted small">
-                      <div>단가: {finalPrice.toLocaleString()}원</div>
+                      <div>
+                        단가: {finalPrice.toLocaleString()}원
+                        {discountRate > 0 && (
+                          <Badge bg="danger" className="ms-2">
+                            {formatDiscountRate(discountRate)} 할인
+                          </Badge>
+                        )}
+                      </div>
                       <div className="fw-bold">총 가격: {totalPriceForSelected.toLocaleString()}원</div>
                     </div>
                   </div>
