@@ -688,7 +688,7 @@ export default function EditProductPage() {
                 <div key={index} className="border p-3 mb-2 rounded">
                   <div className="row g-3">
                     <div className="col-md-3">
-                      <Form.Label>최소 인원</Form.Label>
+                      <Form.Label>최소 수량</Form.Label>
                       <Form.Control
                         type="number"
                         min="1"
@@ -700,7 +700,7 @@ export default function EditProductPage() {
                       />
                     </div>
                     <div className="col-md-3">
-                      <Form.Label>최대 인원</Form.Label>
+                      <Form.Label>최대 수량</Form.Label>
                       <Form.Control
                         type="number"
                         min={tier.min}
@@ -743,7 +743,7 @@ export default function EditProductPage() {
                     </div>
                   </div>
                   <div className="mt-2 text-muted small">
-                    예: {tier.min}명~{tier.max}명 참여 시{' '}
+                    예: {tier.min}개~{tier.max}개 참여 시{' '}
                     {(tier.discount * 100).toFixed(0)}% 할인
                   </div>
                 </div>
