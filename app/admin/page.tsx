@@ -211,10 +211,10 @@ export default function AdminDashboard() {
               템플릿 관리
             </Button>
           </Link>
-          <Link href="/products/new">
-            <Button variant="primary">
-              <i className="bi bi-plus-circle me-2"></i>
-              새 제품 등록
+          <Link href="/admin/products" className="me-2">
+            <Button variant="outline-success">
+              <i className="bi bi-box-seam me-2"></i>
+              상품 관리
             </Button>
           </Link>
         </div>
