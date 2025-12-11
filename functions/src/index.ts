@@ -7,7 +7,12 @@ admin.initializeApp();
 export const deleteUser = onCall(
   {
     region: 'us-central1', // 리전 명시
-    cors: true, // CORS 허용 (모든 origin 허용)
+    cors: [
+      'https://fishub-group-qpk1wdo11-jeong-youngnams-projects.vercel.app',
+      /https:\/\/.*\.vercel\.app/,
+      /https:\/\/.*\.firebaseapp\.com/,
+      /https:\/\/.*\.web\.app/,
+    ],
   },
   async (request) => {
   // 인증 확인

@@ -247,12 +247,18 @@ export default function UserDetailPage() {
                            functionError.code === 'functions/unavailable' ||
                            functionError.code === 'functions/not-found' ||
                            functionError.message?.includes('Failed to fetch') ||
-                           functionError.message?.includes('ERR_FAILED');
+                           functionError.message?.includes('ERR_FAILED') ||
+                           functionError.code === 'internal';
         
         if (isCorsError) {
           // CORS 오류인 경우 Firestore만 삭제
           await deleteDoc(doc(db, 'users', user.uid));
-          setError('CORS 오류로 인해 Firestore에서만 삭제되었습니다. Firebase Authentication에서도 삭제하려면 프로덕션 환경에서 시도하거나, Firebase Console에서 직접 삭제해주세요.');
+          setSuccess(true);
+          setError('CORS 오류로 인해 Firestore에서만 삭제되었습니다. Firebase Authentication에서도 삭제하려면 Firebase Console에서 직접 삭제해주세요.');
+          setTimeout(() => {
+            router.push('/admin/users');
+          }, 2000);
+          return;
         } else {
           // 다른 오류는 다시 throw
           throw functionError;
