@@ -80,6 +80,7 @@ export default function NewUserPage() {
       // Firestore에 사용자 문서 생성
       // 문서 ID는 자동 생성되고, 이를 UID로 사용
       const userRef = await addDoc(collection(db, 'users'), {
+        uid: '', // Firebase Auth에 계정이 없으므로 빈 문자열로 설정
         email: formData.email.toLowerCase().trim(),
         displayName: formData.displayName.trim(),
         phoneNumber: formData.phoneNumber.trim() || null,

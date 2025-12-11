@@ -7,6 +7,7 @@ import {
   createUserWithEmailAndPassword,
   updatePassword,
   sendPasswordResetEmail,
+  fetchSignInMethodsForEmail,
 } from 'firebase/auth';
 import { auth } from './config';
 import {
@@ -223,20 +224,23 @@ export const setInitialPassword = async (
       password
     );
 
-    // Firestore의 UID를 Firebase Auth UID로 업데이트
-    await setDoc(
-      doc(db, 'users', credential.user.uid),
-      {
-        uid: credential.user.uid,
-        provider: 'email',
-        updatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
+    // 기존 문서의 모든 데이터를 보존하면서 UID만 업데이트
+    const updatedUserData = {
+      ...userData,
+      uid: credential.user.uid,
+      provider: 'email',
+      updatedAt: serverTimestamp(),
+    };
 
-    // 기존 문서 삭제 (UID가 변경되었으므로)
+    // 문서 ID가 Firebase Auth UID와 다른 경우 새 문서로 이동
     if (userDoc.id !== credential.user.uid) {
+      // 새 문서 생성 (Firebase Auth UID를 문서 ID로 사용)
+      await setDoc(doc(db, 'users', credential.user.uid), updatedUserData);
+      // 기존 문서 삭제
       await deleteDoc(userDoc.ref);
+    } else {
+      // 같은 문서 ID면 업데이트만
+      await setDoc(userDoc.ref, updatedUserData, { merge: true });
     }
   } catch (error: any) {
     console.error('비밀번호 설정 오류:', error);

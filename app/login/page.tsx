@@ -64,13 +64,13 @@ export default function LoginPage() {
         const provider = userData.provider || null;
 
         // Firebase Auth에 계정이 있는지 확인 (provider가 email인 경우)
-        // 관리자가 추가한 회원은 UID가 Firestore 문서 ID와 같고,
+        // 관리자가 추가한 회원은 UID가 없거나 빈 문자열이고,
         // Firebase Auth에 계정이 없으면 비밀번호 설정이 필요함
         let needsPassword = false;
         if (provider === 'email') {
-          // UID가 문서 ID와 같으면 관리자가 추가한 회원 (Firebase Auth에 계정 없음)
-          // UID가 다르면 이미 Firebase Auth에 계정이 있는 회원
-          needsPassword = userDoc.id === userData.uid;
+          // UID가 없거나 빈 문자열이면 관리자가 추가한 회원 (Firebase Auth에 계정 없음)
+          // UID가 있고 문서 ID와 다르면 이미 Firebase Auth에 계정이 있는 회원
+          needsPassword = !userData.uid || userData.uid === '' || userDoc.id === userData.uid;
         }
 
         setUserInfo({
@@ -153,9 +153,17 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       console.error('이메일 로그인 오류:', error);
-      if (error.code === 'auth/user-not-found') {
-        // Firebase Auth에 계정이 없으면 비밀번호 설정 페이지로
-        router.push(`/set-password?email=${encodeURIComponent(emailFormData.email)}`);
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+        // Firebase Auth에 계정이 없거나 잘못된 자격증명인 경우
+        // 관리자가 추가한 회원일 수 있으므로 비밀번호 설정 페이지로 이동
+        if (userInfo?.needsPassword) {
+          router.push(`/set-password?email=${encodeURIComponent(emailFormData.email)}`);
+        } else {
+          // needsPassword가 false인데도 오류가 발생하면 비밀번호 설정 페이지로
+          router.push(`/set-password?email=${encodeURIComponent(emailFormData.email)}`);
+        }
+      } else if (error.code === 'auth/wrong-password') {
+        setError('비밀번호가 올바르지 않습니다.');
       } else {
         setError(error.message || '로그인에 실패했습니다.');
       }
