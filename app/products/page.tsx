@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase/config';
 import { Product } from '@/types';
 import { ProductCard } from '@/components/products/ProductCard';
 import { useAuth } from '@/components/auth/AuthContext';
+import { isAdmin } from '@/lib/admin';
 import Link from 'next/link';
 
 export default function ProductsPage() {
@@ -94,7 +95,7 @@ export default function ProductsPage() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h1>제품 목록</h1>
-        {user && (
+        {user && isAdmin(user) && (
           <Link href="/products/new">
             <Button variant="primary">
               <i className="bi bi-plus-circle me-2"></i>
@@ -108,7 +109,7 @@ export default function ProductsPage() {
         <Alert variant="info">
           <Alert.Heading>제품이 없습니다</Alert.Heading>
           <p>현재 진행 중인 공동구매 제품이 없습니다.</p>
-          {user && (
+          {user && isAdmin(user) && (
             <Link href="/products/new">
               <Button variant="primary">
                 첫 번째 제품 등록하기
