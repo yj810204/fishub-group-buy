@@ -181,21 +181,23 @@ export default function LoginPage() {
       router.push('/');
     } catch (error: any) {
       console.error('이메일 로그인 오류:', error);
+      // signInWithEmail에서 이미 적절한 오류 메시지로 변환했으므로
+      // error.message를 우선 사용
       if (error.code === 'auth/user-not-found') {
         // Firebase Auth에 계정이 없는 경우
         // 관리자가 추가한 회원일 수 있으므로 비밀번호 설정 페이지로 이동
         router.push(`/set-password?email=${encodeURIComponent(emailFormData.email)}`);
-      } else if (error.code === 'auth/invalid-credential') {
-        // 잘못된 자격증명인 경우
+      } else if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        // 잘못된 자격증명인 경우 (비밀번호 오류)
         // needsPassword가 true이면 비밀번호 설정 페이지로, false이면 비밀번호 오류 메시지 표시
         if (userInfo?.needsPassword) {
           router.push(`/set-password?email=${encodeURIComponent(emailFormData.email)}`);
         } else {
-          setError('비밀번호가 올바르지 않습니다.');
+          // signInWithEmail에서 변환된 오류 메시지 사용
+          setError(error.message || '비밀번호가 올바르지 않습니다.');
         }
-      } else if (error.code === 'auth/wrong-password') {
-        setError('비밀번호가 올바르지 않습니다.');
       } else {
+        // 기타 오류는 변환된 메시지 사용
         setError(error.message || '로그인에 실패했습니다.');
       }
     } finally {
