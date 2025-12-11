@@ -55,7 +55,8 @@ export interface Product {
   description: string;
   basePrice: number; // 시작가
   discountTiers: DiscountTier[];
-  currentParticipants: number; // 현재 참여 인원
+  currentParticipants: number; // 현재 참여 인원 (하위 호환성)
+  currentQuantity: number; // 현재 참여 수량
   status: 'active' | 'completed' | 'cancelled';
   createdAt: Date;
   createdBy: string; // user uid
@@ -72,8 +73,10 @@ export interface Order {
   id: string;
   productId: string;
   userId: string;
-  participantCount: number; // 참여 시점의 인원 수
-  finalPrice: number; // 할인 적용된 최종 가격
+  participantCount: number; // 참여 시점의 인원 수 (하위 호환성)
+  quantity: number; // 참여 수량
+  finalPrice: number; // 할인 적용된 최종 가격 (단가)
+  totalPrice: number; // 총 가격 (finalPrice * quantity)
   status: 'pending' | 'confirmed' | 'cancelled';
   createdAt: Date;
 }

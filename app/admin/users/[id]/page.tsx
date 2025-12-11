@@ -100,8 +100,10 @@ export default function UserDetailPage() {
           id: doc.id,
           productId: orderData.productId,
           userId: orderData.userId,
-          participantCount: orderData.participantCount,
+          participantCount: orderData.participantCount || 0,
+          quantity: orderData.quantity || 1,
           finalPrice: orderData.finalPrice,
+          totalPrice: orderData.totalPrice || (orderData.finalPrice * (orderData.quantity || 1)),
           status: orderData.status,
           createdAt: orderData.createdAt?.toDate() || new Date(),
         });
@@ -417,8 +419,9 @@ export default function UserDetailPage() {
                     <tr>
                       <th>주문 ID</th>
                       <th>상태</th>
-                      <th>참여 인원</th>
-                      <th>최종 가격</th>
+                      <th>참여 수량</th>
+                      <th>단가</th>
+                      <th>총 가격</th>
                       <th>주문일</th>
                     </tr>
                   </thead>
@@ -441,8 +444,9 @@ export default function UserDetailPage() {
                             <Badge bg="danger">취소</Badge>
                           )}
                         </td>
-                        <td>{order.participantCount}명</td>
+                        <td>{order.quantity}개</td>
                         <td>{order.finalPrice.toLocaleString()}원</td>
+                        <td>{order.totalPrice.toLocaleString()}원</td>
                         <td>
                           {order.createdAt.toLocaleString('ko-KR', {
                             year: 'numeric',

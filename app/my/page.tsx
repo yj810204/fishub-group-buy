@@ -79,8 +79,10 @@ export default function MyPage() {
           id: doc.id,
           productId: data.productId,
           userId: data.userId,
-          participantCount: data.participantCount,
+          participantCount: data.participantCount || 0,
+          quantity: data.quantity || 1,
           finalPrice: data.finalPrice,
+          totalPrice: data.totalPrice || (data.finalPrice * (data.quantity || 1)),
           status: data.status,
           createdAt: data.createdAt?.toDate() || new Date(),
         });
@@ -134,10 +136,16 @@ export default function MyPage() {
         status: 'cancelled',
       });
 
-      // 제품의 참여 인원 감소
+      // 주문 정보 가져오기 (수량 확인)
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data();
+      const cancelledQuantity = orderData?.quantity || 1;
+
+      // 제품의 참여 수량 감소
       const productRef = doc(db, 'products', order.productId);
       await updateDoc(productRef, {
-        currentParticipants: increment(-1),
+        currentParticipants: increment(-1), // 하위 호환성
+        currentQuantity: increment(-cancelledQuantity),
       });
 
       // 주문 목록 새로고침
@@ -281,8 +289,9 @@ export default function MyPage() {
               <thead>
                 <tr>
                   <th>주문 ID</th>
-                  <th>참여 인원</th>
-                  <th>최종 가격</th>
+                  <th>참여 수량</th>
+                  <th>단가</th>
+                  <th>총 가격</th>
                   <th>상태</th>
                   <th>주문 일시</th>
                   <th>상세</th>
@@ -293,8 +302,9 @@ export default function MyPage() {
                 {orders.map((order) => (
                   <tr key={order.id}>
                     <td>{order.id.substring(0, 8)}...</td>
-                    <td>{order.participantCount}명</td>
+                    <td>{order.quantity}개</td>
                     <td>{order.finalPrice.toLocaleString()}원</td>
+                    <td>{order.totalPrice.toLocaleString()}원</td>
                     <td>{getStatusBadge(order.status)}</td>
                     <td>
                       {order.createdAt.toLocaleDateString('ko-KR')}{' '}

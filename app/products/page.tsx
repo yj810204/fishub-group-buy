@@ -47,6 +47,7 @@ export default function ProductsPage() {
           basePrice: data.basePrice,
           discountTiers: data.discountTiers,
           currentParticipants: data.currentParticipants || 0,
+          currentQuantity: data.currentQuantity || 0,
           status: data.status,
           createdAt: data.createdAt?.toDate() || new Date(),
           createdBy: data.createdBy,

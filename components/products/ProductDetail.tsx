@@ -1,7 +1,7 @@
   'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Card, Badge, Button, Alert, ProgressBar } from 'react-bootstrap';
+import { Card, Badge, Button, Alert, ProgressBar, Form, InputGroup } from 'react-bootstrap';
 import { ImageModal } from '@/components/common/ImageModal';
 import { Product, Order } from '@/types';
 import { useAuth } from '@/components/auth/AuthContext';
@@ -48,8 +48,12 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const { user } = useAuth();
   const router = useRouter();
   const [currentParticipants, setCurrentParticipants] = useState(
-    product.currentParticipants
+    product.currentParticipants || 0
   );
+  const [currentQuantity, setCurrentQuantity] = useState(
+    product.currentQuantity || 0
+  );
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [hasParticipated, setHasParticipated] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -64,12 +68,13 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   useEffect(() => {
     if (!db) return;
 
-    // 실시간으로 참여 인원 업데이트
+    // 실시간으로 참여 수량 업데이트
     const productRef = doc(db, 'products', product.id);
     const unsubscribe = onSnapshot(productRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         setCurrentParticipants(data.currentParticipants || 0);
+        setCurrentQuantity(data.currentQuantity || 0);
       }
     });
 
@@ -171,6 +176,11 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
       if (activeOrder) {
         setHasParticipated(true);
         setOrderId(activeOrder.id);
+        // 주문의 수량 정보 가져오기 (표시용)
+        const orderData = activeOrder.data();
+        if (orderData.quantity) {
+          // 수량은 표시만 하고, 참여 시에는 새로 선택 가능
+        }
       } else {
         // 취소된 주문만 있거나 주문이 없는 경우
         setHasParticipated(false);
@@ -242,16 +252,20 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
     setError(null);
 
     try {
-      // 할인 계산
+      // 총 참여 수량 계산 (현재 수량 + 선택한 수량)
+      const totalQuantity = currentQuantity + selectedQuantity;
+      
+      // 할인 계산 (총 수량 기준)
       const discountRate = calculateDiscountRate(
-        currentParticipants,
+        totalQuantity,
         product.discountTiers
       );
       const finalPrice = calculateFinalPrice(
         product.basePrice,
-        currentParticipants,
+        totalQuantity,
         product.discountTiers
       );
+      const totalPrice = finalPrice * selectedQuantity;
 
       // 주문 생성
       const orderData: Omit<Order, 'id' | 'createdAt'> & {
@@ -259,8 +273,10 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
       } = {
         productId: product.id,
         userId: user.uid,
-        participantCount: currentParticipants + 1,
-        finalPrice,
+        participantCount: currentParticipants + 1, // 하위 호환성
+        quantity: selectedQuantity,
+        finalPrice, // 단가
+        totalPrice, // 총 가격
         status: 'pending',
         createdAt: new Date(),
       };
@@ -268,17 +284,19 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
       // 주문 생성
       const orderDocRef = await addDoc(collection(db, 'orders'), orderData);
 
-      // 제품의 참여 인원 증가
+      // 제품의 참여 수량 증가
       const productRef = doc(db, 'products', product.id);
       await updateDoc(productRef, {
-        currentParticipants: increment(1),
+        currentParticipants: increment(1), // 하위 호환성
+        currentQuantity: increment(selectedQuantity),
       });
 
-      // 업데이트 후 최신 참여 인원 수 확인
+      // 업데이트 후 최신 참여 수량 확인
       const updatedProductDoc = await getDoc(productRef);
       if (updatedProductDoc.exists()) {
         const updatedData = updatedProductDoc.data();
         setCurrentParticipants(updatedData.currentParticipants || 0);
+        setCurrentQuantity(updatedData.currentQuantity || 0);
       }
 
       setHasParticipated(true);
@@ -312,11 +330,25 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
         status: 'cancelled',
       });
 
-      // 제품의 참여 인원 감소
+      // 주문 정보 가져오기 (수량 확인)
+      const orderDoc = await getDoc(orderRef);
+      const orderData = orderDoc.data();
+      const cancelledQuantity = orderData?.quantity || 1;
+
+      // 제품의 참여 수량 감소
       const productRef = doc(db, 'products', product.id);
       await updateDoc(productRef, {
-        currentParticipants: increment(-1),
+        currentParticipants: increment(-1), // 하위 호환성
+        currentQuantity: increment(-cancelledQuantity),
       });
+
+      // 업데이트 후 최신 참여 수량 확인
+      const updatedProductDoc = await getDoc(productRef);
+      if (updatedProductDoc.exists()) {
+        const updatedData = updatedProductDoc.data();
+        setCurrentParticipants(updatedData.currentParticipants || 0);
+        setCurrentQuantity(updatedData.currentQuantity || 0);
+      }
 
       setHasParticipated(false);
       setOrderId(null);
@@ -329,17 +361,20 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
     }
   };
 
+  // 할인 계산 (현재 총 수량 기준)
+  const totalQuantityForDiscount = currentQuantity + (hasParticipated ? 0 : selectedQuantity);
   const discountRate = calculateDiscountRate(
-    currentParticipants,
+    totalQuantityForDiscount,
     product.discountTiers
   );
   const finalPrice = calculateFinalPrice(
     product.basePrice,
-    currentParticipants,
+    totalQuantityForDiscount,
     product.discountTiers
   );
+  const totalPriceForSelected = finalPrice * selectedQuantity;
   const participantsUntilNextTier = getParticipantsUntilNextTier(
-    currentParticipants,
+    totalQuantityForDiscount,
     product.discountTiers
   );
 
@@ -582,13 +617,18 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
             현재가: {finalPrice.toLocaleString()}원
           </div>
           <div className="text-muted mb-3">
-            현재 참여 인원: <strong>{currentParticipants}명</strong>
+            현재 참여 수량: <strong>{currentQuantity}개</strong>
+            {currentParticipants > 0 && (
+              <span className="ms-2 text-muted small">
+                (참여 인원: {currentParticipants}명)
+              </span>
+            )}
           </div>
 
           {participantsUntilNextTier !== null && (
             <Alert variant="info" className="mb-3">
               <i className="bi bi-info-circle me-2"></i>
-              <strong>{participantsUntilNextTier}명</strong>이 더 참여하면 다음
+              <strong>{participantsUntilNextTier}개</strong>가 더 참여하면 다음
               할인 구간에 도달합니다!
             </Alert>
           )}
@@ -611,9 +651,9 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
             <table className="table table-bordered">
               <thead>
                 <tr>
-                  <th>참여 인원</th>
+                  <th>참여 수량</th>
                   <th>할인율</th>
-                  <th>최종 가격</th>
+                  <th>최종 가격 (단가)</th>
                 </tr>
               </thead>
               <tbody>
@@ -626,15 +666,15 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                       [tier]
                     );
                     const isCurrentTier =
-                      currentParticipants >= tier.min &&
-                      currentParticipants <= tier.max;
+                      totalQuantityForDiscount >= tier.min &&
+                      totalQuantityForDiscount <= tier.max;
                     return (
                       <tr
                         key={index}
                         className={isCurrentTier ? 'table-success' : ''}
                       >
                         <td>
-                          {tier.min}명 ~ {tier.max}명
+                          {tier.min}개 ~ {tier.max}개
                         </td>
                         <td>
                           <Badge bg="danger">
@@ -721,28 +761,69 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
                   차단된 회원은 공동구매에 참여할 수 없습니다.
                 </Alert>
               ) : (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={handleParticipate}
-                  disabled={loading || isTimeExpired || (user ? isUserBlocked(user) : false)}
-                >
-                  {loading ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-2"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      처리 중...
-                    </>
-                  ) : (
-                    <>
-                      <i className="bi bi-cart-plus me-2"></i>
-                      공동구매 참여하기
-                    </>
-                  )}
-                </Button>
+                <>
+                  <div className="mb-3">
+                    <Form.Label className="mb-2">
+                      <strong>수량 선택</strong>
+                    </Form.Label>
+                    <InputGroup>
+                      <Button
+                        variant="outline-secondary"
+                        onClick={() => {
+                          if (selectedQuantity > 1) {
+                            setSelectedQuantity(selectedQuantity - 1);
+                          }
+                        }}
+                        disabled={selectedQuantity <= 1}
+                      >
+                        <i className="bi bi-dash"></i>
+                      </Button>
+                      <Form.Control
+                        type="number"
+                        min="1"
+                        value={selectedQuantity}
+                        onChange={(e) => {
+                          const value = parseInt(e.target.value) || 1;
+                          setSelectedQuantity(Math.max(1, value));
+                        }}
+                        style={{ textAlign: 'center' }}
+                      />
+                      <Button
+                        variant="outline-secondary"
+                        onClick={() => setSelectedQuantity(selectedQuantity + 1)}
+                      >
+                        <i className="bi bi-plus"></i>
+                      </Button>
+                    </InputGroup>
+                    <div className="mt-2 text-muted small">
+                      <div>단가: {finalPrice.toLocaleString()}원</div>
+                      <div className="fw-bold">총 가격: {totalPriceForSelected.toLocaleString()}원</div>
+                    </div>
+                  </div>
+                  <Button
+                    variant="primary"
+                    size="lg"
+                    onClick={handleParticipate}
+                    disabled={loading || isTimeExpired || (user ? isUserBlocked(user) : false)}
+                    className="w-100"
+                  >
+                    {loading ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        처리 중...
+                      </>
+                    ) : (
+                      <>
+                        <i className="bi bi-cart-plus me-2"></i>
+                        공동구매 참여하기 ({selectedQuantity}개)
+                      </>
+                    )}
+                  </Button>
+                </>
               )}
             </div>
           </div>

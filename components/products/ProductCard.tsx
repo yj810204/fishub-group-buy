@@ -12,13 +12,14 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const totalQuantity = product.currentQuantity || product.currentParticipants || 0;
   const discountRate = calculateDiscountRate(
-    product.currentParticipants,
+    totalQuantity,
     product.discountTiers
   );
   const finalPrice = calculateFinalPrice(
     product.basePrice,
-    product.currentParticipants,
+    totalQuantity,
     product.discountTiers
   );
 
@@ -170,7 +171,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </div>
           )}
           <div className="text-muted small mb-3">
-            현재 참여 인원: <strong>{product.currentParticipants}명</strong>
+            현재 참여 수량: <strong>{product.currentQuantity || product.currentParticipants || 0}개</strong>
           </div>
           <Link href={`/products/${product.id}`} className="w-100">
             <Button

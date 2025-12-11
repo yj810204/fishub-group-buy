@@ -81,6 +81,7 @@ export default function AdminDashboard() {
           basePrice: data.basePrice,
           discountTiers: data.discountTiers,
           currentParticipants: data.currentParticipants || 0,
+          currentQuantity: data.currentQuantity || 0,
           status: data.status,
           createdAt: data.createdAt?.toDate() || new Date(),
           createdBy: data.createdBy,
@@ -100,8 +101,10 @@ export default function AdminDashboard() {
           id: doc.id,
           productId: data.productId,
           userId: data.userId,
-          participantCount: data.participantCount,
+          participantCount: data.participantCount || 0,
+          quantity: data.quantity || 1,
           finalPrice: data.finalPrice,
+          totalPrice: data.totalPrice || (data.finalPrice * (data.quantity || 1)),
           status: data.status,
           createdAt: data.createdAt?.toDate() || new Date(),
         });
@@ -331,7 +334,14 @@ export default function AdminDashboard() {
                             }
                           })()}
                         </td>
-                        <td>{product.currentParticipants}명</td>
+                        <td>
+                          {product.currentQuantity || 0}개
+                          {product.currentParticipants > 0 && (
+                            <span className="ms-1 text-muted small">
+                              ({product.currentParticipants}명)
+                            </span>
+                          )}
+                        </td>
                         <td>
                           <div className="btn-group btn-group-sm">
                             <Link href={`/products/${product.id}/edit`}>
@@ -442,8 +452,9 @@ export default function AdminDashboard() {
                     <tr>
                       <th>주문 ID</th>
                       <th>제품</th>
-                      <th>참여 인원</th>
-                      <th>최종 가격</th>
+                      <th>참여 수량</th>
+                      <th>단가</th>
+                      <th>총 가격</th>
                       <th>상태</th>
                       <th>주문 일시</th>
                     </tr>
@@ -460,8 +471,9 @@ export default function AdminDashboard() {
                             제품 보기
                           </Link>
                         </td>
-                        <td>{order.participantCount}명</td>
+                        <td>{order.quantity}개</td>
                         <td>{order.finalPrice.toLocaleString()}원</td>
+                        <td>{order.totalPrice.toLocaleString()}원</td>
                         <td>
                           {order.status === 'pending' && (
                             <Badge bg="warning">대기 중</Badge>
