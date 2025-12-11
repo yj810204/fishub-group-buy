@@ -208,6 +208,22 @@ export const setInitialPassword = async (
   }
 
   try {
+    // Firebase Auth에 이미 계정이 있는지 먼저 확인
+    try {
+      const signInMethods = await fetchSignInMethodsForEmail(auth, email.toLowerCase().trim());
+      // Firebase Auth에 계정이 있으면 탈퇴한 사용자로 처리
+      if (signInMethods.length > 0) {
+        throw new Error('탈퇴한 이메일 주소는 재가입할 수 없습니다.');
+      }
+    } catch (checkError: any) {
+      // 탈퇴한 사용자 오류는 그대로 전달
+      if (checkError.message === '탈퇴한 이메일 주소는 재가입할 수 없습니다.') {
+        throw checkError;
+      }
+      // 기타 오류는 무시하고 계속 진행
+      console.warn('로그인 방법 확인 실패, 계속 진행:', checkError);
+    }
+
     // Firestore에서 이메일로 사용자 찾기
     const usersQuery = query(
       collection(db, 'users'),

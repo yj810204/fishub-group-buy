@@ -34,25 +34,17 @@ function SetPasswordForm() {
       return;
     }
 
-    // 탈퇴한 사용자 체크 (Firebase Auth에만 있고 Firestore에 없는 경우)
+    // 탈퇴한 사용자 체크 (Firebase Auth에 계정이 있으면 탈퇴한 사용자)
     const checkDeletedUser = async () => {
       if (!auth || !db) return;
 
       try {
-        // Firestore에서 이메일 확인
-        const usersQuery = query(
-          collection(db, 'users'),
-          where('email', '==', email.toLowerCase().trim())
-        );
-        const querySnapshot = await getDocs(usersQuery);
-        
-        // Firestore에 없으면 Firebase Auth 확인
-        if (querySnapshot.empty) {
-          const signInMethods = await fetchSignInMethodsForEmail(auth, email.toLowerCase().trim());
-          // Firebase Auth에만 있고 Firestore에 없는 경우 (탈퇴한 사용자)
-          if (signInMethods.length > 0) {
-            setError('탈퇴한 이메일 주소는 재가입할 수 없습니다.');
-          }
+        // Firebase Auth에 계정이 있는지 먼저 확인
+        const signInMethods = await fetchSignInMethodsForEmail(auth, email.toLowerCase().trim());
+        // Firebase Auth에 계정이 있으면 탈퇴한 사용자로 처리
+        // (Firestore에 사용자가 있어도 Firebase Auth에 계정이 있으면 탈퇴한 사용자)
+        if (signInMethods.length > 0) {
+          setError('탈퇴한 이메일 주소는 재가입할 수 없습니다.');
         }
       } catch (error) {
         // 오류 발생 시 무시 (일반적인 경우)
