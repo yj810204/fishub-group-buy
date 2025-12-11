@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Container, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import { setInitialPassword, signInWithEmail } from '@/lib/firebase/auth';
 import { useAuth } from '@/components/auth/AuthContext';
+import { auth, db } from '@/lib/firebase/config';
+import { fetchSignInMethodsForEmail } from 'firebase/auth';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 function SetPasswordForm() {
   const router = useRouter();
@@ -28,7 +31,36 @@ function SetPasswordForm() {
     // 이미 로그인되어 있고 비밀번호가 설정된 경우 홈으로 리다이렉트
     if (user && !authLoading) {
       router.push('/');
+      return;
     }
+
+    // 탈퇴한 사용자 체크 (Firebase Auth에만 있고 Firestore에 없는 경우)
+    const checkDeletedUser = async () => {
+      if (!auth || !db) return;
+
+      try {
+        // Firestore에서 이메일 확인
+        const usersQuery = query(
+          collection(db, 'users'),
+          where('email', '==', email.toLowerCase().trim())
+        );
+        const querySnapshot = await getDocs(usersQuery);
+        
+        // Firestore에 없으면 Firebase Auth 확인
+        if (querySnapshot.empty) {
+          const signInMethods = await fetchSignInMethodsForEmail(auth, email.toLowerCase().trim());
+          // Firebase Auth에만 있고 Firestore에 없는 경우 (탈퇴한 사용자)
+          if (signInMethods.length > 0) {
+            setError('탈퇴한 이메일 주소는 재가입할 수 없습니다.');
+          }
+        }
+      } catch (error) {
+        // 오류 발생 시 무시 (일반적인 경우)
+        console.warn('탈퇴한 사용자 확인 실패:', error);
+      }
+    };
+
+    checkDeletedUser();
   }, [email, user, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {

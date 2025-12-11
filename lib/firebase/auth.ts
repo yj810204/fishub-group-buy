@@ -273,7 +273,28 @@ export const setInitialPassword = async (
   } catch (error: any) {
     console.error('비밀번호 설정 오류:', error);
     if (error.code === 'auth/email-already-in-use') {
-      throw new Error('이미 등록된 이메일입니다.');
+      // Firebase Auth에 계정이 있는 경우, Firestore에 있는지 확인
+      try {
+        const usersQuery = query(
+          collection(db, 'users'),
+          where('email', '==', email.toLowerCase().trim())
+        );
+        const querySnapshot = await getDocs(usersQuery);
+        if (querySnapshot.empty) {
+          // Firebase Auth에만 있고 Firestore에 없는 경우 (탈퇴한 사용자)
+          throw new Error('탈퇴한 이메일 주소는 재가입할 수 없습니다.');
+        } else {
+          // Firestore에 있는 경우
+          throw new Error('이미 등록된 이메일입니다.');
+        }
+      } catch (checkError: any) {
+        // Firestore 확인 중 오류가 발생한 경우, 원래 오류 메시지 사용
+        if (checkError.message === '탈퇴한 이메일 주소는 재가입할 수 없습니다.' || 
+            checkError.message === '이미 등록된 이메일입니다.') {
+          throw checkError;
+        }
+        throw new Error('이미 등록된 이메일입니다.');
+      }
     } else if (error.code === 'auth/weak-password') {
       throw new Error('비밀번호는 최소 6자 이상이어야 합니다.');
     }
