@@ -8,6 +8,7 @@ export const deleteUser = onCall(
   {
     region: 'us-central1', // 리전 명시
     cors: [
+      'https://fishub-group-buy.vercel.app',
       'https://fishub-group-qpk1wdo11-jeong-youngnams-projects.vercel.app',
       /https:\/\/.*\.vercel\.app/,
       /https:\/\/.*\.firebaseapp\.com/,

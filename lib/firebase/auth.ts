@@ -47,12 +47,22 @@ export const signInWithGoogle = async (): Promise<User> => {
       provider: 'google',
       createdAt: userSnap.exists() ? existingData.createdAt : serverTimestamp(),
       status: existingData.status || 'active',
-      phoneNumber: existingData.phoneNumber,
-      blockedUntil: existingData.blockedUntil,
-      blockedReason: existingData.blockedReason,
-      blockedBy: existingData.blockedBy,
       updatedAt: serverTimestamp(),
     };
+
+    // undefined가 아닌 경우에만 필드 추가
+    if (existingData.phoneNumber !== undefined) {
+      userData.phoneNumber = existingData.phoneNumber;
+    }
+    if (existingData.blockedUntil !== undefined) {
+      userData.blockedUntil = existingData.blockedUntil;
+    }
+    if (existingData.blockedReason !== undefined) {
+      userData.blockedReason = existingData.blockedReason;
+    }
+    if (existingData.blockedBy !== undefined) {
+      userData.blockedBy = existingData.blockedBy;
+    }
 
     try {
       await setDoc(userRef, userData, { merge: true });
