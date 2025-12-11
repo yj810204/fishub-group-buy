@@ -1,6 +1,6 @@
 # Vercel 배포 가이드
 
-Next.js 앱을 Vercel에 배포하면 CORS 문제 없이 Cloud Functions를 사용할 수 있습니다.
+Next.js 앱을 Vercel에 배포하는 방법입니다.
 
 ## 배포 순서
 

@@ -50,7 +50,6 @@ GitHub 저장소 페이지에서 코드가 올라갔는지 확인하세요.
 - `.env.local` 파일은 Git에 올라가지 않습니다 (`.gitignore`에 포함됨)
 - 환경 변수는 Vercel 대시보드에서 별도로 설정해야 합니다
 - `node_modules` 폴더도 Git에 올라가지 않습니다
-- `functions/node_modules`와 `functions/lib`도 Git에 올라가지 않습니다
 
 ## 다음 단계
 
