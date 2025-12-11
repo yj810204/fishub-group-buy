@@ -67,23 +67,35 @@ export default function LoginPage() {
 
         // Firebase Auth에 계정이 있는지 확인 (provider가 email인 경우)
         let needsPassword = false;
-        if (provider === 'email' && auth) {
-          try {
-            // Firebase Auth에서 이메일로 로그인 방법 확인
-            const signInMethods = await fetchSignInMethodsForEmail(auth, email.toLowerCase().trim());
-            
-            // password 로그인 방법이 없으면 비밀번호 설정 필요
-            // (관리자가 추가한 회원이고 아직 비밀번호를 설정하지 않은 경우)
-            needsPassword = !signInMethods.includes('password');
-          } catch (error) {
-            // fetchSignInMethodsForEmail 실패 시 기존 로직 사용
-            console.warn('로그인 방법 확인 실패, 기존 로직 사용:', error);
-            const hasValidUid = userData.uid && userData.uid !== '';
-            const isSameId = userDoc.id === userData.uid;
-            
-            // UID가 없거나 빈 문자열이면 관리자가 추가한 회원 (Firebase Auth에 계정 없음)
-            // UID가 있고 문서 ID와 같으면 회원가입을 완료한 회원 (Firebase Auth에 계정 있음)
-            needsPassword = !hasValidUid || (hasValidUid && !isSameId);
+        if (provider === 'email') {
+          // Firestore 데이터를 먼저 확인
+          const hasValidUid = userData.uid && userData.uid !== '';
+          const isSameId = userDoc.id === userData.uid;
+          
+          // 회원가입을 완료한 회원: 문서 ID와 UID가 같고, UID가 유효함
+          // 관리자가 추가한 회원: 문서 ID와 UID가 다르거나, UID가 없음
+          if (hasValidUid && isSameId) {
+            // 회원가입을 완료한 회원 (Firebase Auth에 계정 있음)
+            needsPassword = false;
+          } else {
+            // 관리자가 추가한 회원인지 확인하기 위해 Firebase Auth 확인
+            if (auth) {
+              try {
+                // Firebase Auth에서 이메일로 로그인 방법 확인
+                const signInMethods = await fetchSignInMethodsForEmail(auth, email.toLowerCase().trim());
+                
+                // password 로그인 방법이 없으면 비밀번호 설정 필요
+                needsPassword = !signInMethods.includes('password');
+              } catch (error) {
+                // fetchSignInMethodsForEmail 실패 시 Firestore 데이터 기반으로 판단
+                console.warn('로그인 방법 확인 실패, Firestore 데이터 기반 판단:', error);
+                // UID가 없거나 빈 문자열이면 관리자가 추가한 회원 (Firebase Auth에 계정 없음)
+                needsPassword = !hasValidUid || (hasValidUid && !isSameId);
+              }
+            } else {
+              // auth가 없으면 Firestore 데이터 기반으로 판단
+              needsPassword = !hasValidUid || (hasValidUid && !isSameId);
+            }
           }
         }
 
