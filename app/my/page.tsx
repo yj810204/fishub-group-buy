@@ -301,7 +301,7 @@ export default function MyPage() {
               <tbody>
                 {orders.map((order) => (
                   <tr key={order.id}>
-                    <td>{order.id.substring(0, 8)}...</td>
+                    <td>{order.id}</td>
                     <td>{order.quantity}개</td>
                     <td>{order.finalPrice.toLocaleString()}원</td>
                     <td>{order.totalPrice.toLocaleString()}원</td>
@@ -314,7 +314,7 @@ export default function MyPage() {
                       })}
                     </td>
                     <td>
-                      <Link href={`/products/${order.productId}`}>
+                      <Link href={`/my/orders/${order.id}`}>
                         <i className="bi bi-arrow-right-circle"></i>
                       </Link>
                     </td>
