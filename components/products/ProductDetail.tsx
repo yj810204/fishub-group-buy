@@ -161,19 +161,19 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
         where('userId', '==', user.uid)
       );
       const querySnapshot = await getDocs(ordersQuery);
-      const hasOrder = !querySnapshot.empty;
-      setHasParticipated(hasOrder);
-      if (hasOrder && !querySnapshot.empty) {
-        // 취소되지 않은 주문 찾기
-        const activeOrder = querySnapshot.docs.find(
-          (doc) => doc.data().status !== 'cancelled'
-        );
-        if (activeOrder) {
-          setOrderId(activeOrder.id);
-        } else {
-          setOrderId(null);
-        }
+      
+      // 취소되지 않은 주문 찾기
+      const activeOrder = querySnapshot.docs.find(
+        (doc) => doc.data().status !== 'cancelled'
+      );
+      
+      // 취소되지 않은 주문이 있을 때만 참여한 것으로 간주
+      if (activeOrder) {
+        setHasParticipated(true);
+        setOrderId(activeOrder.id);
       } else {
+        // 취소된 주문만 있거나 주문이 없는 경우
+        setHasParticipated(false);
         setOrderId(null);
       }
     } catch (error) {
