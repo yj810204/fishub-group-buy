@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, Table, Badge, Spinner, Alert, Button, Modal, Form } from 'react-bootstrap';
 import { useAuth } from '@/components/auth/AuthContext';
 import { changePassword } from '@/lib/firebase/auth';
+import { isAdmin } from '@/lib/admin';
 import {
   collection,
   query,
@@ -191,14 +192,16 @@ export default function MyPage() {
               <i className="bi bi-pencil me-1"></i>
               회원정보 변경
             </Button>
-            <Button
-              variant="outline-danger"
-              size="sm"
-              onClick={() => setShowDeleteModal(true)}
-            >
-              <i className="bi bi-trash me-1"></i>
-              탈퇴
-            </Button>
+            {!isAdmin(user) && (
+              <Button
+                variant="outline-danger"
+                size="sm"
+                onClick={() => setShowDeleteModal(true)}
+              >
+                <i className="bi bi-trash me-1"></i>
+                탈퇴
+              </Button>
+            )}
           </div>
         </Card.Body>
       </Card>
@@ -497,11 +500,17 @@ export default function MyPage() {
           <Modal.Title>회원 탈퇴</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <Alert variant="warning">
-            <strong>주의:</strong> 탈퇴하시면 모든 회원정보와 주문 내역이 삭제되며, 복구할 수 없습니다.
-            <br />
-            정말 탈퇴하시겠습니까?
-          </Alert>
+          {isAdmin(user) ? (
+            <Alert variant="danger">
+              <strong>오류:</strong> 최고관리자는 탈퇴할 수 없습니다.
+            </Alert>
+          ) : (
+            <Alert variant="warning">
+              <strong>주의:</strong> 탈퇴하시면 모든 회원정보와 주문 내역이 삭제되며, 복구할 수 없습니다.
+              <br />
+              정말 탈퇴하시겠습니까?
+            </Alert>
+          )}
         </Modal.Body>
         <Modal.Footer>
           <Button
@@ -511,52 +520,54 @@ export default function MyPage() {
           >
             취소
           </Button>
-          <Button
-            variant="danger"
-            onClick={async () => {
-              if (!db || !user) {
-                return;
-              }
+          {!isAdmin(user) && (
+            <Button
+              variant="danger"
+              onClick={async () => {
+                if (!db || !user) {
+                  return;
+                }
 
-              if (!confirm('정말 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
-                return;
-              }
+                if (!confirm('정말 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                  return;
+                }
 
-              try {
-                setDeleting(true);
+                try {
+                  setDeleting(true);
 
-                // Firestore에서 사용자 삭제
-                const userRef = doc(db, 'users', user.uid);
-                await deleteDoc(userRef);
+                  // Firestore에서 사용자 삭제
+                  const userRef = doc(db, 'users', user.uid);
+                  await deleteDoc(userRef);
 
-                alert('탈퇴가 완료되었습니다.');
-                // 로그아웃 후 홈으로 이동
-                const { signOut } = await import('@/lib/firebase/auth');
-                await signOut();
-                router.push('/');
-              } catch (error: any) {
-                console.error('탈퇴 오류:', error);
-                alert('탈퇴 중 오류가 발생했습니다. 다시 시도해주세요.');
-              } finally {
-                setDeleting(false);
-                setShowDeleteModal(false);
-              }
-            }}
-            disabled={deleting}
-          >
-            {deleting ? (
-              <>
-                <span
-                  className="spinner-border spinner-border-sm me-1"
-                  role="status"
-                  aria-hidden="true"
-                ></span>
-                처리 중...
-              </>
-            ) : (
-              '탈퇴하기'
-            )}
-          </Button>
+                  alert('탈퇴가 완료되었습니다.');
+                  // 로그아웃 후 홈으로 이동
+                  const { signOut } = await import('@/lib/firebase/auth');
+                  await signOut();
+                  router.push('/');
+                } catch (error: any) {
+                  console.error('탈퇴 오류:', error);
+                  alert('탈퇴 중 오류가 발생했습니다. 다시 시도해주세요.');
+                } finally {
+                  setDeleting(false);
+                  setShowDeleteModal(false);
+                }
+              }}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-1"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                  처리 중...
+                </>
+              ) : (
+                '탈퇴하기'
+              )}
+            </Button>
+          )}
         </Modal.Footer>
       </Modal>
     </div>
