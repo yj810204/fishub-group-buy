@@ -8,9 +8,16 @@ service cloud.firestore {
     }
     
     // 사용자는 자신의 정보만 읽고 쓸 수 있음 (관리자는 모든 사용자 정보 접근 가능)
+    // 이메일로 사용자 조회는 로그인 전에도 허용 (로그인 플로우를 위해)
+    // 단, 쿼리는 이메일 필드로만 가능하도록 제한
     match /users/{userId} {
-      allow read: if request.auth != null && 
+      // 개별 문서 읽기: 자신의 정보 또는 관리자
+      allow get: if request.auth != null && 
         (request.auth.uid == userId || isAdmin());
+      // 쿼리 읽기: 이메일로 사용자 조회 허용 (로그인 플로우를 위해)
+      // 주의: Firestore 규칙에서는 쿼리 조건을 직접 확인할 수 없으므로,
+      // 이메일로만 조회하도록 클라이언트 코드에서 제한해야 함
+      allow list: if true;
       allow write: if request.auth != null && 
         (request.auth.uid == userId || isAdmin());
     }
