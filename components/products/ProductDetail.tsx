@@ -265,7 +265,8 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
         createdAt: new Date(),
       };
 
-      await addDoc(collection(db, 'orders'), orderData);
+      // 주문 생성
+      const orderDocRef = await addDoc(collection(db, 'orders'), orderData);
 
       // 제품의 참여 인원 증가
       const productRef = doc(db, 'products', product.id);
@@ -273,18 +274,15 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
         currentParticipants: increment(1),
       });
 
-      setHasParticipated(true);
-      // 새로 생성된 주문 ID 저장
-      const newOrderQuery = query(
-        collection(db, 'orders'),
-        where('productId', '==', product.id),
-        where('userId', '==', user.uid),
-        where('status', '==', 'pending')
-      );
-      const newOrderSnapshot = await getDocs(newOrderQuery);
-      if (!newOrderSnapshot.empty) {
-        setOrderId(newOrderSnapshot.docs[0].id);
+      // 업데이트 후 최신 참여 인원 수 확인
+      const updatedProductDoc = await getDoc(productRef);
+      if (updatedProductDoc.exists()) {
+        const updatedData = updatedProductDoc.data();
+        setCurrentParticipants(updatedData.currentParticipants || 0);
       }
+
+      setHasParticipated(true);
+      setOrderId(orderDocRef.id);
       alert('공동구매에 참여하셨습니다!');
     } catch (error) {
       console.error('참여 오류:', error);

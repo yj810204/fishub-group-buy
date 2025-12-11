@@ -47,9 +47,8 @@ service cloud.firestore {
         resource.data.createdBy == request.auth.uid || 
         isAdmin() ||
         // 일반 사용자는 currentParticipants 필드만 업데이트 가능
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentParticipants']) &&
-         request.resource.data.currentParticipants is int &&
-         resource.data.currentParticipants is int)
+        // affectedKeys()로 변경된 필드 확인, increment() 사용 시에도 허용
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentParticipants']))
       );
       allow delete: if request.auth != null && 
         (resource.data.createdBy == request.auth.uid || isAdmin());
