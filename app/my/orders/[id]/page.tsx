@@ -8,7 +8,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Order, Product } from '@/types';
 import Link from 'next/link';
-import { formatDiscountRate } from '@/lib/discount';
+import { formatDiscountRate, calculateFinalPrice, calculateDiscountRate } from '@/lib/discount';
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -56,24 +56,13 @@ export default function OrderDetailPage() {
         return;
       }
 
-      const orderObj: Order = {
-        id: orderDoc.id,
-        productId: orderData.productId,
-        userId: orderData.userId,
-        participantCount: orderData.participantCount || 0,
-        quantity: orderData.quantity || 1,
-        finalPrice: orderData.finalPrice,
-        totalPrice: orderData.totalPrice || (orderData.finalPrice * (orderData.quantity || 1)),
-        status: orderData.status,
-        createdAt: orderData.createdAt?.toDate() || new Date(),
-      };
-      setOrder(orderObj);
-
-      // 제품 정보 가져오기
+      // 제품 정보 먼저 가져오기 (pending 주문의 경우 현재 총 수량 기준으로 가격 재계산을 위해)
       const productDoc = await getDoc(doc(db, 'products', orderData.productId));
+      let productObj: Product | null = null;
+      
       if (productDoc.exists()) {
         const productData = productDoc.data();
-        const productObj: Product = {
+        productObj = {
           id: productDoc.id,
           name: productData.name,
           description: productData.description,
@@ -93,6 +82,32 @@ export default function OrderDetailPage() {
         };
         setProduct(productObj);
       }
+
+      // pending 주문의 경우 현재 총 수량 기준으로 가격 재계산
+      let finalPrice = orderData.finalPrice;
+      let totalPrice = orderData.totalPrice || (orderData.finalPrice * (orderData.quantity || 1));
+      
+      if (orderData.status === 'pending' && productObj) {
+        finalPrice = calculateFinalPrice(
+          productObj.basePrice,
+          productObj.currentQuantity,
+          productObj.discountTiers
+        );
+        totalPrice = finalPrice * (orderData.quantity || 1);
+      }
+
+      const orderObj: Order = {
+        id: orderDoc.id,
+        productId: orderData.productId,
+        userId: orderData.userId,
+        participantCount: orderData.participantCount || 0,
+        quantity: orderData.quantity || 1,
+        finalPrice,
+        totalPrice,
+        status: orderData.status,
+        createdAt: orderData.createdAt?.toDate() || new Date(),
+      };
+      setOrder(orderObj);
     } catch (error) {
       console.error('주문 정보 로드 오류:', error);
       setError('주문 정보를 불러오는 중 오류가 발생했습니다.');
@@ -114,11 +129,16 @@ export default function OrderDetailPage() {
     }
   };
 
-  // 할인율 계산 (finalPrice와 basePrice 비교)
+  // 할인율 계산
   const calculateOrderDiscountRate = () => {
     if (!product || !order) return 0;
     
-    // finalPrice와 basePrice를 비교하여 할인율 역산
+    // pending 주문의 경우 현재 총 수량 기준으로 할인율 계산
+    if (order.status === 'pending') {
+      return calculateDiscountRate(product.currentQuantity, product.discountTiers);
+    }
+    
+    // confirmed/cancelled 주문의 경우 저장된 finalPrice와 basePrice 비교
     const discountAmount = product.basePrice - order.finalPrice;
     const discountRate = discountAmount / product.basePrice;
     

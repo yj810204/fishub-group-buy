@@ -21,8 +21,10 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { Order } from '@/types';
+import { Order, Product } from '@/types';
 import Link from 'next/link';
+import { calculateFinalPrice } from '@/lib/discount';
+import { recalculatePendingOrders } from '@/lib/order';
 
 export default function MyPage() {
   const { user, loading: authLoading } = useAuth();
@@ -73,9 +75,14 @@ export default function MyPage() {
       const querySnapshot = await getDocs(ordersQuery);
       const ordersData: Order[] = [];
 
+      // 제품 정보를 한 번에 가져오기 위해 제품 ID 수집
+      const productIds = new Set<string>();
+      const ordersMap = new Map<string, any>();
+
       querySnapshot.forEach((doc) => {
         const data = doc.data();
-        ordersData.push({
+        productIds.add(data.productId);
+        ordersMap.set(doc.id, {
           id: doc.id,
           productId: data.productId,
           userId: data.userId,
@@ -86,6 +93,55 @@ export default function MyPage() {
           status: data.status,
           createdAt: data.createdAt?.toDate() || new Date(),
         });
+      });
+
+      // 제품 정보 가져오기
+      const productsMap = new Map<string, Product>();
+      for (const productId of productIds) {
+        try {
+          const productDoc = await getDoc(doc(db, 'products', productId));
+          if (productDoc.exists()) {
+            const productData = productDoc.data();
+            productsMap.set(productId, {
+              id: productDoc.id,
+              name: productData.name,
+              description: productData.description,
+              basePrice: productData.basePrice,
+              discountTiers: productData.discountTiers,
+              currentParticipants: productData.currentParticipants || 0,
+              currentQuantity: productData.currentQuantity || 0,
+              status: productData.status,
+              createdAt: productData.createdAt?.toDate() || new Date(),
+              createdBy: productData.createdBy,
+              imageUrl: productData.imageUrl,
+              imageUrls: productData.imageUrls || (productData.imageUrl ? [productData.imageUrl] : undefined),
+              startDate: productData.startDate?.toDate(),
+              endDate: productData.endDate?.toDate(),
+              productInfoTemplateId: productData.productInfoTemplateId,
+              productInfoData: productData.productInfoData,
+            });
+          }
+        } catch (error) {
+          console.error(`제품 ${productId} 로드 오류:`, error);
+        }
+      }
+
+      // 주문 데이터 처리 (pending 주문은 현재 총 수량 기준으로 가격 재계산)
+      ordersMap.forEach((orderData) => {
+        if (orderData.status === 'pending') {
+          const product = productsMap.get(orderData.productId);
+          if (product) {
+            // 현재 총 수량 기준으로 가격 재계산
+            const newFinalPrice = calculateFinalPrice(
+              product.basePrice,
+              product.currentQuantity,
+              product.discountTiers
+            );
+            orderData.finalPrice = newFinalPrice;
+            orderData.totalPrice = newFinalPrice * orderData.quantity;
+          }
+        }
+        ordersData.push(orderData);
       });
 
       // 클라이언트에서 날짜순 정렬
@@ -147,6 +203,22 @@ export default function MyPage() {
         currentParticipants: increment(-1), // 하위 호환성
         currentQuantity: increment(-cancelledQuantity),
       });
+
+      // 제품 정보 가져오기 (재계산을 위해)
+      const productDoc = await getDoc(productRef);
+      if (productDoc.exists()) {
+        const productData = productDoc.data();
+        try {
+          await recalculatePendingOrders(
+            order.productId,
+            productData.currentQuantity || 0,
+            productData.basePrice,
+            productData.discountTiers
+          );
+        } catch (recalcError) {
+          console.error('주문 가격 재계산 오류:', recalcError);
+        }
+      }
 
       // 주문 목록 새로고침
       await loadOrders();

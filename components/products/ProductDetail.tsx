@@ -39,6 +39,7 @@ import {
   getProductStatus,
 } from '@/lib/product';
 import { isUserBlocked } from '@/lib/user';
+import { recalculatePendingOrders } from '@/lib/order';
 
 interface ProductDetailProps {
   product: Product;
@@ -295,8 +296,22 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
       const updatedProductDoc = await getDoc(productRef);
       if (updatedProductDoc.exists()) {
         const updatedData = updatedProductDoc.data();
+        const newCurrentQuantity = updatedData.currentQuantity || 0;
         setCurrentParticipants(updatedData.currentParticipants || 0);
-        setCurrentQuantity(updatedData.currentQuantity || 0);
+        setCurrentQuantity(newCurrentQuantity);
+
+        // 모든 pending 주문의 가격 재계산
+        try {
+          await recalculatePendingOrders(
+            product.id,
+            newCurrentQuantity,
+            product.basePrice,
+            product.discountTiers
+          );
+        } catch (recalcError) {
+          console.error('주문 가격 재계산 오류:', recalcError);
+          // 재계산 실패해도 주문 생성은 성공한 것으로 처리
+        }
       }
 
       setHasParticipated(true);
