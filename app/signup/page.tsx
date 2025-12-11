@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Container, Card, Form, Button, Alert, Spinner } from 'react-bootstrap';
 import Link from 'next/link';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { collection, addDoc, query, where, getDocs, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
@@ -83,12 +83,28 @@ export default function SignupPage() {
     try {
       setLoading(true);
 
-      // 이메일 중복 확인
-      const emailExists = await checkEmailExists(formData.email);
-      if (emailExists) {
+      // Firestore에서 이메일 중복 확인
+      const emailExistsInFirestore = await checkEmailExists(formData.email);
+      if (emailExistsInFirestore) {
         setError('이미 등록된 이메일입니다.');
         setLoading(false);
         return;
+      }
+
+      // Firebase Auth에 계정이 있는지 확인 (탈퇴한 사용자 체크)
+      if (auth) {
+        try {
+          const signInMethods = await fetchSignInMethodsForEmail(auth, formData.email.toLowerCase().trim());
+          // Firebase Auth에 계정이 있지만 Firestore에 없는 경우 (탈퇴한 사용자)
+          if (signInMethods.length > 0) {
+            setError('탈퇴한 이메일 주소는 재가입할 수 없습니다.');
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          // fetchSignInMethodsForEmail 실패 시 계속 진행 (일반적인 경우)
+          console.warn('로그인 방법 확인 실패, 계속 진행:', error);
+        }
       }
 
       // Firebase Auth에 계정 생성
