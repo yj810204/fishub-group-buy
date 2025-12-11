@@ -68,9 +68,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
             };
             setUser(userObj);
 
-            // 배송지가 없으면 모달 표시 (한 번만)
-            if (!userData.shippingAddress && !showShippingModal) {
-              setShowShippingModal(true);
+            // 배송지가 없으면 모달 표시 (한 번만 - 로컬 스토리지로 확인)
+            if (!userData.shippingAddress) {
+              const modalShownKey = `shippingModalShown_${firebaseUser.uid}`;
+              const hasShownModal = typeof window !== 'undefined' && 
+                localStorage.getItem(modalShownKey) === 'true';
+              
+              if (!hasShownModal) {
+                setShowShippingModal(true);
+                if (typeof window !== 'undefined') {
+                  localStorage.setItem(modalShownKey, 'true');
+                }
+              }
             }
           }
         } catch (error) {
@@ -79,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
       } else {
         setUser(null);
+        // 로그아웃 시 모달 표시 상태 초기화하지 않음 (한 번만 표시하기 위해)
       }
 
       setLoading(false);
