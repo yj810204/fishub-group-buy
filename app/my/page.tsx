@@ -17,6 +17,8 @@ import {
   increment,
   deleteDoc,
   serverTimestamp,
+  getDoc,
+  arrayUnion,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Order } from '@/types';
@@ -28,6 +30,8 @@ export default function MyPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const [hiddenOrderIds, setHiddenOrderIds] = useState<string[]>([]);
+  const [hidingOrderId, setHidingOrderId] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
@@ -85,7 +89,15 @@ export default function MyPage() {
       // 클라이언트에서 날짜순 정렬
       ordersData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-      setOrders(ordersData);
+      // 사용자 문서에서 숨긴 주문 목록 가져오기
+      const userRef = doc(db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      const hiddenOrders = userSnap.data()?.hiddenOrders || [];
+      setHiddenOrderIds(hiddenOrders);
+
+      // 숨긴 주문 필터링
+      const visibleOrders = ordersData.filter(order => !hiddenOrders.includes(order.id));
+      setOrders(visibleOrders);
     } catch (error) {
       console.error('주문 로드 오류:', error);
     } finally {
@@ -136,6 +148,35 @@ export default function MyPage() {
       alert('주문 취소 중 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setCancellingOrderId(null);
+    }
+  };
+
+  const handleHideOrder = async (orderId: string) => {
+    if (!db || !user) return;
+
+    if (!confirm('이 주문을 목록에서 숨기시겠습니까?')) {
+      return;
+    }
+
+    setHidingOrderId(orderId);
+
+    try {
+      // 사용자 문서에 숨긴 주문 ID 추가
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        hiddenOrders: arrayUnion(orderId),
+        updatedAt: serverTimestamp(),
+      });
+
+      // 주문 목록에서 제거
+      setOrders(orders.filter(order => order.id !== orderId));
+      setHiddenOrderIds([...hiddenOrderIds, orderId]);
+      alert('주문이 목록에서 숨겨졌습니다.');
+    } catch (error) {
+      console.error('주문 숨기기 오류:', error);
+      alert('주문 숨기기 중 오류가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setHidingOrderId(null);
     }
   };
 
@@ -267,6 +308,29 @@ export default function MyPage() {
                             <>
                               <i className="bi bi-x-circle me-1"></i>
                               취소
+                            </>
+                          )}
+                        </Button>
+                      ) : order.status === 'cancelled' ? (
+                        <Button
+                          variant="outline-secondary"
+                          size="sm"
+                          onClick={() => handleHideOrder(order.id)}
+                          disabled={hidingOrderId === order.id}
+                        >
+                          {hidingOrderId === order.id ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-1"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              처리 중...
+                            </>
+                          ) : (
+                            <>
+                              <i className="bi bi-eye-slash me-1"></i>
+                              숨기기
                             </>
                           )}
                         </Button>
