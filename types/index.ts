@@ -11,6 +11,7 @@ export interface User {
   blockedReason?: string; // 차단 사유
   blockedBy?: string; // 차단한 관리자 UID
   updatedAt?: Date;
+  isAdmin?: boolean; // 최고관리자 여부
 }
 
 // 할인 구간 타입

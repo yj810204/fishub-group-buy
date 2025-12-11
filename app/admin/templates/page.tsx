@@ -35,7 +35,7 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!user || !isAdmin(user.email)) {
+      if (!user || !isAdmin(user)) {
         router.push('/');
         return;
       }

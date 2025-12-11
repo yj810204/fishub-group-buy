@@ -66,7 +66,7 @@ export const Navbar: React.FC = () => {
                 마이페이지
               </Nav.Link>
             )}
-            {isAdmin(adminEmail) && (
+            {user && isAdmin(user) && (
               <Nav.Link as={Link} href="/admin">
                 <i className="bi bi-speedometer2 me-1"></i>
                 대시보드

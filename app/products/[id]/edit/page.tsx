@@ -135,7 +135,7 @@ export default function EditProductPage() {
         return;
       }
 
-      if (data.createdBy !== user.uid && !isAdmin(user.email)) {
+      if (data.createdBy !== user.uid && !isAdmin(user)) {
         setError('이 제품을 수정할 권한이 없습니다.');
         setLoading(false);
         return;
@@ -333,7 +333,7 @@ export default function EditProductPage() {
     }
 
     // 권한 확인
-    if (productCreatedBy !== user.uid && !isAdmin(user.email)) {
+    if (productCreatedBy !== user.uid && !isAdmin(user)) {
       setError('이 제품을 수정할 권한이 없습니다.');
       return;
     }

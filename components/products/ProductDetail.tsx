@@ -642,7 +642,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
       )}
 
       {/* 수정 버튼 (작성자 또는 관리자만) */}
-      {user && (product.createdBy === user.uid || isAdmin(user.email)) && (
+      {user && (product.createdBy === user.uid || isAdmin(user)) && (
         <div className="mb-3">
           <Link href={`/products/${product.id}/edit`}>
             <Button variant="outline-primary">

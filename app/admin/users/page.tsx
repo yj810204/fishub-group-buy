@@ -22,7 +22,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!user || !isAdmin(user.email)) {
+      if (!user || !isAdmin(user)) {
         router.push('/');
         return;
       }

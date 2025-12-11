@@ -30,6 +30,7 @@ export default function UserDetailPage() {
   const [formData, setFormData] = useState({
     displayName: '',
     phoneNumber: '',
+    isAdmin: false,
   });
 
   const [blockData, setBlockData] = useState({
@@ -40,7 +41,7 @@ export default function UserDetailPage() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!currentUser || !isAdmin(currentUser.email)) {
+      if (!currentUser || !isAdmin(currentUser)) {
         router.push('/');
         return;
       }
@@ -76,12 +77,14 @@ export default function UserDetailPage() {
         blockedReason: data.blockedReason,
         blockedBy: data.blockedBy,
         updatedAt: data.updatedAt?.toDate(),
+        isAdmin: data.isAdmin || false,
       };
 
       setUser(userData);
       setFormData({
         displayName: userData.displayName,
         phoneNumber: userData.phoneNumber || '',
+        isAdmin: userData.isAdmin || false,
       });
 
       // 주문 내역 로드 (인덱스 오류 방지를 위해 클라이언트 사이드 정렬)
@@ -127,6 +130,7 @@ export default function UserDetailPage() {
       await updateDoc(doc(db, 'users', user.uid), {
         displayName: formData.displayName.trim(),
         phoneNumber: formData.phoneNumber.trim() || null,
+        isAdmin: formData.isAdmin,
         updatedAt: new Date(),
       });
 
@@ -259,12 +263,12 @@ export default function UserDetailPage() {
     );
   }
 
-  if (!currentUser || !isAdmin(currentUser.email) || !user) {
+  if (!currentUser || !isAdmin(currentUser) || !user) {
     return null;
   }
 
   const isBlocked = isUserBlocked(user);
-  const isUserAdmin = isAdmin(user.email);
+  const isUserAdmin = isAdmin(user);
 
   return (
     <Container>
@@ -343,6 +347,16 @@ export default function UserDetailPage() {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
+                    </td>
+                  </tr>
+                  <tr>
+                    <th>최고관리자</th>
+                    <td>
+                      {user.isAdmin ? (
+                        <Badge bg="danger">최고관리자</Badge>
+                      ) : (
+                        <Badge bg="secondary">일반회원</Badge>
+                      )}
                     </td>
                   </tr>
                   {isBlocked && user.blockedReason && (
@@ -474,6 +488,19 @@ export default function UserDetailPage() {
                 }
                 placeholder="010-1234-5678"
               />
+            </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Check
+                type="checkbox"
+                label="최고관리자 권한 부여"
+                checked={formData.isAdmin}
+                onChange={(e) =>
+                  setFormData({ ...formData, isAdmin: e.target.checked })
+                }
+              />
+              <Form.Text className="text-muted">
+                최고관리자 권한을 부여하면 제품 등록 및 모든 관리 기능에 접근할 수 있습니다.
+              </Form.Text>
             </Form.Group>
           </Form>
         </Modal.Body>

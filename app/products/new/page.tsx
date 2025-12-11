@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase/config';
 import { useAuth } from '@/components/auth/AuthContext';
 import { DiscountTier, ProductInfoTemplate, ProductInfoField } from '@/types';
 import { uploadImage, getProductImagePath } from '@/lib/firebase/storage';
+import { isAdmin } from '@/lib/admin';
 
 export default function NewProductPage() {
   const { user, loading: authLoading } = useAuth();
@@ -39,6 +40,12 @@ export default function NewProductPage() {
     if (!authLoading && !user) {
       router.push('/login');
     } else if (user && db) {
+      // 최고관리자 권한 확인
+      if (!isAdmin(user)) {
+        alert('제품 등록은 최고관리자만 가능합니다.');
+        router.push('/products');
+        return;
+      }
       loadTemplates();
     }
   }, [user, authLoading, router]);

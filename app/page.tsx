@@ -44,7 +44,7 @@ export default function HomePage() {
                 마이페이지
               </Button>
             </Link>
-            {isAdmin(user.email) && (
+            {isAdmin(user) && (
               <Link href="/admin">
                 <Button variant="success" size="lg">
                   <i className="bi bi-speedometer2 me-2"></i>

@@ -61,6 +61,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               blockedReason: userData.blockedReason,
               blockedBy: userData.blockedBy,
               updatedAt: userData.updatedAt?.toDate(),
+              isAdmin: userData.isAdmin || false,
             });
           }
         } catch (error) {
