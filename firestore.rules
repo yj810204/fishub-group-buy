@@ -31,11 +31,11 @@ service cloud.firestore {
       // update: 자신의 문서를 업데이트할 수 있음
       allow update: if request.auth != null && 
         (request.auth.uid == userId || isAdmin());
-      // delete: 관리자 또는 자신의 이메일과 일치하는 문서 삭제 가능
-      // (관리자가 추가한 회원의 기존 문서를 삭제하기 위해)
+      // delete: 관리자 또는 자신의 문서 삭제 가능
+      // (관리자가 추가한 회원의 기존 문서를 삭제하기 위해 이메일 조건도 포함)
       allow delete: if isAdmin() || 
         (request.auth != null && 
-         resource.data.email == request.auth.token.email);
+         (request.auth.uid == userId || resource.data.email == request.auth.token.email));
     }
     
     // 제품은 모든 사용자가 읽을 수 있고, 최고관리자만 작성 가능

@@ -14,6 +14,8 @@ import {
   doc,
   updateDoc,
   increment,
+  deleteDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { Order } from '@/types';
@@ -25,20 +27,30 @@ export default function MyPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [changingPassword, setChangingPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordFormData, setPasswordFormData] = useState({
-    currentPassword: '',
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    displayName: '',
+    phoneNumber: '',
     newPassword: '',
     confirmPassword: '',
   });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
     } else if (user) {
       loadOrders();
+      // 회원정보 변경 모달 열 때 현재 정보로 초기화
+      setEditFormData({
+        displayName: user.displayName || '',
+        phoneNumber: user.phoneNumber || '',
+        newPassword: '',
+        confirmPassword: '',
+      });
     }
   }, [user, authLoading, router]);
 
@@ -161,18 +173,33 @@ export default function MyPage() {
               ? '이메일' 
               : 'Kakao'}
           </p>
-          {user.provider === 'email' && (
-            <p className="mb-0">
-              <Button
-                variant="outline-primary"
-                size="sm"
-                onClick={() => setShowPasswordModal(true)}
-              >
-                <i className="bi bi-key me-1"></i>
-                비밀번호 변경
-              </Button>
-            </p>
-          )}
+          <div className="d-flex gap-2 mt-3">
+            <Button
+              variant="outline-primary"
+              size="sm"
+              onClick={() => {
+                setEditFormData({
+                  displayName: user.displayName || '',
+                  phoneNumber: user.phoneNumber || '',
+                  newPassword: '',
+                  confirmPassword: '',
+                });
+                setEditError(null);
+                setShowEditModal(true);
+              }}
+            >
+              <i className="bi bi-pencil me-1"></i>
+              회원정보 변경
+            </Button>
+            <Button
+              variant="outline-danger"
+              size="sm"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              <i className="bi bi-trash me-1"></i>
+              탈퇴
+            </Button>
+          </div>
         </Card.Body>
       </Card>
 
@@ -252,105 +279,179 @@ export default function MyPage() {
         </Card.Body>
       </Card>
 
-      {/* 비밀번호 변경 모달 */}
-      <Modal show={showPasswordModal} onHide={() => {
-        setShowPasswordModal(false);
-        setPasswordError(null);
-        setPasswordFormData({
-          currentPassword: '',
+      {/* 회원정보 변경 모달 */}
+      <Modal show={showEditModal} onHide={() => {
+        setShowEditModal(false);
+        setEditError(null);
+        setEditFormData({
+          displayName: user?.displayName || '',
+          phoneNumber: user?.phoneNumber || '',
           newPassword: '',
           confirmPassword: '',
         });
       }}>
         <Modal.Header closeButton>
-          <Modal.Title>비밀번호 변경</Modal.Title>
+          <Modal.Title>회원정보 변경</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          {passwordError && (
-            <Alert variant="danger" dismissible onClose={() => setPasswordError(null)}>
-              {passwordError}
+          {editError && (
+            <Alert variant="danger" dismissible onClose={() => setEditError(null)}>
+              {editError}
             </Alert>
           )}
           <Form
             onSubmit={async (e) => {
               e.preventDefault();
-              setPasswordError(null);
+              setEditError(null);
 
-              if (!passwordFormData.newPassword || !passwordFormData.confirmPassword) {
-                setPasswordError('모든 필드를 입력해주세요.');
+              if (!editFormData.displayName.trim()) {
+                setEditError('이름을 입력해주세요.');
                 return;
               }
 
-              if (passwordFormData.newPassword.length < 6) {
-                setPasswordError('비밀번호는 최소 6자 이상이어야 합니다.');
-                return;
+              // 비밀번호 변경이 요청된 경우 검증
+              if (editFormData.newPassword || editFormData.confirmPassword) {
+                if (editFormData.newPassword.length < 6) {
+                  setEditError('비밀번호는 최소 6자 이상이어야 합니다.');
+                  return;
+                }
+
+                if (editFormData.newPassword !== editFormData.confirmPassword) {
+                  setEditError('새 비밀번호가 일치하지 않습니다.');
+                  return;
+                }
               }
 
-              if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
-                setPasswordError('새 비밀번호가 일치하지 않습니다.');
+              if (!db || !user) {
+                setEditError('Firebase가 초기화되지 않았습니다.');
                 return;
               }
 
               try {
-                setChangingPassword(true);
-                await changePassword(passwordFormData.newPassword);
-                alert('비밀번호가 변경되었습니다.');
-                setShowPasswordModal(false);
-                setPasswordFormData({
-                  currentPassword: '',
+                setSaving(true);
+
+                // Firestore 사용자 정보 업데이트
+                const userRef = doc(db, 'users', user.uid);
+                await updateDoc(userRef, {
+                  displayName: editFormData.displayName.trim(),
+                  phoneNumber: editFormData.phoneNumber.trim() || null,
+                  updatedAt: serverTimestamp(),
+                });
+
+                // 비밀번호 변경이 요청된 경우 (이메일 로그인 사용자만)
+                if (user.provider === 'email' && editFormData.newPassword) {
+                  await changePassword(editFormData.newPassword);
+                }
+
+                alert('회원정보가 변경되었습니다.');
+                setShowEditModal(false);
+                setEditFormData({
+                  displayName: editFormData.displayName.trim(),
+                  phoneNumber: editFormData.phoneNumber.trim(),
                   newPassword: '',
                   confirmPassword: '',
                 });
+                // 페이지 새로고침하여 변경된 정보 반영
+                window.location.reload();
               } catch (error: any) {
-                console.error('비밀번호 변경 오류:', error);
-                setPasswordError(error.message || '비밀번호 변경에 실패했습니다.');
+                console.error('회원정보 변경 오류:', error);
+                setEditError(error.message || '회원정보 변경에 실패했습니다.');
               } finally {
-                setChangingPassword(false);
+                setSaving(false);
               }
             }}
           >
             <Form.Group className="mb-3">
-              <Form.Label>새 비밀번호</Form.Label>
+              <Form.Label>이메일</Form.Label>
               <Form.Control
-                type="password"
-                value={passwordFormData.newPassword}
+                type="email"
+                value={user?.email || ''}
+                disabled
+                readOnly
+              />
+              <Form.Text className="text-muted">
+                이메일은 변경할 수 없습니다.
+              </Form.Text>
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>이름 <span className="text-danger">*</span></Form.Label>
+              <Form.Control
+                type="text"
+                value={editFormData.displayName}
                 onChange={(e) =>
-                  setPasswordFormData({
-                    ...passwordFormData,
-                    newPassword: e.target.value,
+                  setEditFormData({
+                    ...editFormData,
+                    displayName: e.target.value,
                   })
                 }
-                placeholder="최소 6자 이상"
+                placeholder="이름을 입력하세요"
                 required
-                minLength={6}
               />
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>새 비밀번호 확인</Form.Label>
+              <Form.Label>전화번호</Form.Label>
               <Form.Control
-                type="password"
-                value={passwordFormData.confirmPassword}
+                type="tel"
+                value={editFormData.phoneNumber}
                 onChange={(e) =>
-                  setPasswordFormData({
-                    ...passwordFormData,
-                    confirmPassword: e.target.value,
+                  setEditFormData({
+                    ...editFormData,
+                    phoneNumber: e.target.value,
                   })
                 }
-                placeholder="비밀번호를 다시 입력하세요"
-                required
-                minLength={6}
+                placeholder="전화번호를 입력하세요 (선택사항)"
               />
             </Form.Group>
+
+            {user?.provider === 'email' && (
+              <>
+                <hr />
+                <h6 className="mb-3">비밀번호 변경</h6>
+                <Form.Group className="mb-3">
+                  <Form.Label>새 비밀번호</Form.Label>
+                  <Form.Control
+                    type="password"
+                    value={editFormData.newPassword}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        newPassword: e.target.value,
+                      })
+                    }
+                    placeholder="변경하지 않으려면 비워두세요 (최소 6자 이상)"
+                    minLength={6}
+                  />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                  <Form.Label>새 비밀번호 확인</Form.Label>
+                  <Form.Control
+                    type="password"
+                    value={editFormData.confirmPassword}
+                    onChange={(e) =>
+                      setEditFormData({
+                        ...editFormData,
+                        confirmPassword: e.target.value,
+                      })
+                    }
+                    placeholder="비밀번호를 다시 입력하세요"
+                    minLength={6}
+                  />
+                </Form.Group>
+              </>
+            )}
 
             <div className="d-flex justify-content-end gap-2">
               <Button
                 variant="secondary"
                 onClick={() => {
-                  setShowPasswordModal(false);
-                  setPasswordError(null);
-                  setPasswordFormData({
-                    currentPassword: '',
+                  setShowEditModal(false);
+                  setEditError(null);
+                  setEditFormData({
+                    displayName: user?.displayName || '',
+                    phoneNumber: user?.phoneNumber || '',
                     newPassword: '',
                     confirmPassword: '',
                   });
@@ -358,23 +459,92 @@ export default function MyPage() {
               >
                 취소
               </Button>
-              <Button variant="primary" type="submit" disabled={changingPassword}>
-                {changingPassword ? (
+              <Button variant="primary" type="submit" disabled={saving}>
+                {saving ? (
                   <>
                     <span
                       className="spinner-border spinner-border-sm me-1"
                       role="status"
                       aria-hidden="true"
                     ></span>
-                    변경 중...
+                    저장 중...
                   </>
                 ) : (
-                  '변경'
+                  '저장'
                 )}
               </Button>
             </div>
           </Form>
         </Modal.Body>
+      </Modal>
+
+      {/* 탈퇴 확인 모달 */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>회원 탈퇴</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="warning">
+            <strong>주의:</strong> 탈퇴하시면 모든 회원정보와 주문 내역이 삭제되며, 복구할 수 없습니다.
+            <br />
+            정말 탈퇴하시겠습니까?
+          </Alert>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => setShowDeleteModal(false)}
+            disabled={deleting}
+          >
+            취소
+          </Button>
+          <Button
+            variant="danger"
+            onClick={async () => {
+              if (!db || !user) {
+                return;
+              }
+
+              if (!confirm('정말 탈퇴하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) {
+                return;
+              }
+
+              try {
+                setDeleting(true);
+
+                // Firestore에서 사용자 삭제
+                const userRef = doc(db, 'users', user.uid);
+                await deleteDoc(userRef);
+
+                alert('탈퇴가 완료되었습니다.');
+                // 로그아웃 후 홈으로 이동
+                const { signOut } = await import('@/lib/firebase/auth');
+                await signOut();
+                router.push('/');
+              } catch (error: any) {
+                console.error('탈퇴 오류:', error);
+                alert('탈퇴 중 오류가 발생했습니다. 다시 시도해주세요.');
+              } finally {
+                setDeleting(false);
+                setShowDeleteModal(false);
+              }
+            }}
+            disabled={deleting}
+          >
+            {deleting ? (
+              <>
+                <span
+                  className="spinner-border spinner-border-sm me-1"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
+                처리 중...
+              </>
+            ) : (
+              '탈퇴하기'
+            )}
+          </Button>
+        </Modal.Footer>
       </Modal>
     </div>
   );
