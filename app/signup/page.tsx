@@ -135,7 +135,14 @@ export default function SignupPage() {
     } catch (error: any) {
       console.error('회원가입 오류:', error);
       if (error.code === 'auth/email-already-in-use') {
-        setError('이미 등록된 이메일입니다.');
+        // Firebase Auth에 계정이 있는 경우, Firestore에 있는지 확인
+        const emailExistsInFirestore = await checkEmailExists(formData.email);
+        if (emailExistsInFirestore) {
+          setError('이미 등록된 이메일입니다.');
+        } else {
+          // Firebase Auth에만 있고 Firestore에 없는 경우 (탈퇴한 사용자)
+          setError('탈퇴한 이메일 주소는 재가입할 수 없습니다.');
+        }
       } else if (error.code === 'auth/weak-password') {
         setError('비밀번호는 최소 6자 이상이어야 합니다.');
       } else if (error.code === 'auth/invalid-email') {
