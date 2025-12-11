@@ -304,7 +304,8 @@ export default function MyPage() {
               e.preventDefault();
               setEditError(null);
 
-              if (!editFormData.displayName.trim()) {
+              // 구글 로그인 사용자는 이름 변경 불가
+              if (user?.provider !== 'google' && !editFormData.displayName.trim()) {
                 setEditError('이름을 입력해주세요.');
                 return;
               }
@@ -332,11 +333,15 @@ export default function MyPage() {
 
                 // Firestore 사용자 정보 업데이트
                 const userRef = doc(db, 'users', user.uid);
-                await updateDoc(userRef, {
-                  displayName: editFormData.displayName.trim(),
+                const updateData: any = {
                   phoneNumber: editFormData.phoneNumber.trim() || null,
                   updatedAt: serverTimestamp(),
-                });
+                };
+                // 구글 로그인 사용자는 이름 변경 불가
+                if (user.provider !== 'google') {
+                  updateData.displayName = editFormData.displayName.trim();
+                }
+                await updateDoc(userRef, updateData);
 
                 // 비밀번호 변경이 요청된 경우 (이메일 로그인 사용자만)
                 if (user.provider === 'email' && editFormData.newPassword) {
@@ -375,7 +380,9 @@ export default function MyPage() {
             </Form.Group>
 
             <Form.Group className="mb-3">
-              <Form.Label>이름 <span className="text-danger">*</span></Form.Label>
+              <Form.Label>
+                이름 {user?.provider !== 'google' && <span className="text-danger">*</span>}
+              </Form.Label>
               <Form.Control
                 type="text"
                 value={editFormData.displayName}
@@ -386,8 +393,14 @@ export default function MyPage() {
                   })
                 }
                 placeholder="이름을 입력하세요"
-                required
+                disabled={user?.provider === 'google'}
+                required={user?.provider !== 'google'}
               />
+              {user?.provider === 'google' && (
+                <Form.Text className="text-muted">
+                  구글 로그인 사용자는 이름을 변경할 수 없습니다.
+                </Form.Text>
+              )}
             </Form.Group>
 
             <Form.Group className="mb-3">
