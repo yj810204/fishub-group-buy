@@ -110,6 +110,9 @@ export default function SignupPage() {
         updatedAt: serverTimestamp(),
       });
 
+      // Firestore 저장이 완료될 때까지 잠시 대기 (AuthContext가 사용자 정보를 로드할 시간 확보)
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // 성공 메시지 표시 후 홈으로 이동
       alert('회원가입이 완료되었습니다.');
       router.push('/');
