@@ -187,8 +187,21 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
       return;
     }
 
-    // 배송지 확인
-    if (!user.shippingAddress) {
+    // 배송지 확인 (최신 정보 확인)
+    let hasShippingAddress = user.shippingAddress;
+    if (!hasShippingAddress && db) {
+      try {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          hasShippingAddress = userData.shippingAddress;
+        }
+      } catch (error) {
+        console.error('배송지 확인 오류:', error);
+      }
+    }
+
+    if (!hasShippingAddress) {
       setShowShippingModal(true);
       return;
     }
