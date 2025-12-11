@@ -29,7 +29,7 @@ import { useRouter } from 'next/navigation';
 import { isAdmin } from '@/lib/admin';
 import Link from 'next/link';
 import { ProductInfoTemplate } from '@/types';
-import { Table } from 'react-bootstrap';
+import { Table, Modal } from 'react-bootstrap';
 import {
   isWithinPeriod,
   isBeforeStart,
@@ -59,6 +59,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const [productInfoTemplate, setProductInfoTemplate] = useState<ProductInfoTemplate | null>(null);
   const [timeRemaining, setTimeRemaining] = useState<string | null>(null);
   const [isTimeExpired, setIsTimeExpired] = useState(false);
+  const [showShippingModal, setShowShippingModal] = useState(false);
 
   useEffect(() => {
     if (!db) return;
@@ -183,6 +184,12 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
   const handleParticipate = async () => {
     if (!user) {
       router.push('/login');
+      return;
+    }
+
+    // 배송지 확인
+    if (!user.shippingAddress) {
+      setShowShippingModal(true);
       return;
     }
 
@@ -762,6 +769,34 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({ product }) => {
           }}
         />
       ) : null}
+
+      {/* 배송지 등록 모달 */}
+      <Modal show={showShippingModal} onHide={() => setShowShippingModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>배송지 등록 필요</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="warning">
+            <strong>배송지 등록이 필요합니다.</strong>
+            <br />
+            공동구매에 참여하려면 배송지 정보를 등록해주세요.
+          </Alert>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowShippingModal(false)}>
+            취소
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setShowShippingModal(false);
+              router.push('/my/shipping');
+            }}
+          >
+            배송지 등록하기
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 };

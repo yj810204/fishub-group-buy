@@ -1,3 +1,13 @@
+// 배송지 타입
+export interface ShippingAddress {
+  recipientName: string; // 수령인 이름
+  phoneNumber: string; // 전화번호
+  postalCode: string; // 우편번호
+  address: string; // 기본주소
+  detailAddress: string; // 상세주소
+  deliveryMemo?: string; // 배송 메모 (선택사항)
+}
+
 // 사용자 타입
 export interface User {
   uid: string;
@@ -12,6 +22,7 @@ export interface User {
   blockedBy?: string; // 차단한 관리자 UID
   updatedAt?: Date;
   isAdmin?: boolean; // 최고관리자 여부
+  shippingAddress?: ShippingAddress; // 배송지 정보
 }
 
 // 할인 구간 타입

@@ -233,6 +233,12 @@ export default function MyPage() {
               <i className="bi bi-pencil me-1"></i>
               회원정보 변경
             </Button>
+            <Link href="/my/shipping">
+              <Button variant="outline-info" size="sm">
+                <i className="bi bi-geo-alt me-1"></i>
+                배송지 등록
+              </Button>
+            </Link>
             {!isAdmin(user) && (
               <Button
                 variant="outline-danger"
@@ -244,6 +250,21 @@ export default function MyPage() {
               </Button>
             )}
           </div>
+          {user.shippingAddress && (
+            <div className="mt-3 p-3 bg-light rounded">
+              <h6 className="mb-2">등록된 배송지</h6>
+              <p className="mb-1">
+                <strong>수령인:</strong> {user.shippingAddress.recipientName}
+              </p>
+              <p className="mb-1">
+                <strong>전화번호:</strong> {user.shippingAddress.phoneNumber}
+              </p>
+              <p className="mb-0">
+                <strong>주소:</strong> ({user.shippingAddress.postalCode}){' '}
+                {user.shippingAddress.address} {user.shippingAddress.detailAddress}
+              </p>
+            </div>
+          )}
         </Card.Body>
       </Card>
 

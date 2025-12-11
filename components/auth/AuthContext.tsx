@@ -6,6 +6,7 @@ import { auth } from '@/lib/firebase/config';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
 import { User } from '@/types';
+import { Modal, Button, Alert } from 'react-bootstrap';
 
 interface AuthContextType {
   user: User | null;
@@ -33,6 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showShippingModal, setShowShippingModal] = useState(false);
 
   useEffect(() => {
     if (!auth || !db) {
@@ -49,7 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            setUser({
+            const userObj: User = {
               uid: userData.uid || firebaseUser.uid,
               email: userData.email,
               displayName: userData.displayName,
@@ -62,7 +64,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
               blockedBy: userData.blockedBy,
               updatedAt: userData.updatedAt?.toDate(),
               isAdmin: userData.isAdmin || false,
-            });
+              shippingAddress: userData.shippingAddress,
+            };
+            setUser(userObj);
+
+            // 배송지가 없으면 모달 표시 (한 번만)
+            if (!userData.shippingAddress && !showShippingModal) {
+              setShowShippingModal(true);
+            }
           }
         } catch (error) {
           console.error('사용자 정보 가져오기 오류:', error);
@@ -78,9 +87,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => unsubscribe();
   }, []);
 
+  const ShippingModal = () => {
+    const handleRegister = () => {
+      setShowShippingModal(false);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/my/shipping';
+      }
+    };
+
+    return (
+      <Modal show={showShippingModal} onHide={() => setShowShippingModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>배송지 등록 필요</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Alert variant="warning">
+            <strong>배송지 등록이 필요합니다.</strong>
+            <br />
+            공동구매에 참여하려면 배송지 정보를 등록해주세요.
+          </Alert>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowShippingModal(false)}>
+            나중에
+          </Button>
+          <Button variant="primary" onClick={handleRegister}>
+            배송지 등록하기
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    );
+  };
+
   return (
     <AuthContext.Provider value={{ user, firebaseUser, loading }}>
       {children}
+      <ShippingModal />
     </AuthContext.Provider>
   );
 };
