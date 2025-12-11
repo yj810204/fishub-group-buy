@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Table, Badge, Spinner, Alert, Button } from 'react-bootstrap';
+import { Card, Table, Badge, Spinner, Alert, Button, Modal, Form } from 'react-bootstrap';
 import { useAuth } from '@/components/auth/AuthContext';
+import { changePassword } from '@/lib/firebase/auth';
 import {
   collection,
   query,
@@ -24,6 +25,14 @@ export default function MyPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordFormData, setPasswordFormData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -144,10 +153,26 @@ export default function MyPage() {
           <p className="mb-1">
             <strong>이메일:</strong> {user.email}
           </p>
-          <p className="mb-0">
+          <p className="mb-1">
             <strong>로그인 방법:</strong>{' '}
-            {user.provider === 'google' ? 'Google' : 'Kakao'}
+            {user.provider === 'google' 
+              ? 'Google' 
+              : user.provider === 'email' 
+              ? '이메일' 
+              : 'Kakao'}
           </p>
+          {user.provider === 'email' && (
+            <p className="mb-0">
+              <Button
+                variant="outline-primary"
+                size="sm"
+                onClick={() => setShowPasswordModal(true)}
+              >
+                <i className="bi bi-key me-1"></i>
+                비밀번호 변경
+              </Button>
+            </p>
+          )}
         </Card.Body>
       </Card>
 
@@ -226,6 +251,131 @@ export default function MyPage() {
           )}
         </Card.Body>
       </Card>
+
+      {/* 비밀번호 변경 모달 */}
+      <Modal show={showPasswordModal} onHide={() => {
+        setShowPasswordModal(false);
+        setPasswordError(null);
+        setPasswordFormData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+      }}>
+        <Modal.Header closeButton>
+          <Modal.Title>비밀번호 변경</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {passwordError && (
+            <Alert variant="danger" dismissible onClose={() => setPasswordError(null)}>
+              {passwordError}
+            </Alert>
+          )}
+          <Form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setPasswordError(null);
+
+              if (!passwordFormData.newPassword || !passwordFormData.confirmPassword) {
+                setPasswordError('모든 필드를 입력해주세요.');
+                return;
+              }
+
+              if (passwordFormData.newPassword.length < 6) {
+                setPasswordError('비밀번호는 최소 6자 이상이어야 합니다.');
+                return;
+              }
+
+              if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+                setPasswordError('새 비밀번호가 일치하지 않습니다.');
+                return;
+              }
+
+              try {
+                setChangingPassword(true);
+                await changePassword(passwordFormData.newPassword);
+                alert('비밀번호가 변경되었습니다.');
+                setShowPasswordModal(false);
+                setPasswordFormData({
+                  currentPassword: '',
+                  newPassword: '',
+                  confirmPassword: '',
+                });
+              } catch (error: any) {
+                console.error('비밀번호 변경 오류:', error);
+                setPasswordError(error.message || '비밀번호 변경에 실패했습니다.');
+              } finally {
+                setChangingPassword(false);
+              }
+            }}
+          >
+            <Form.Group className="mb-3">
+              <Form.Label>새 비밀번호</Form.Label>
+              <Form.Control
+                type="password"
+                value={passwordFormData.newPassword}
+                onChange={(e) =>
+                  setPasswordFormData({
+                    ...passwordFormData,
+                    newPassword: e.target.value,
+                  })
+                }
+                placeholder="최소 6자 이상"
+                required
+                minLength={6}
+              />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>새 비밀번호 확인</Form.Label>
+              <Form.Control
+                type="password"
+                value={passwordFormData.confirmPassword}
+                onChange={(e) =>
+                  setPasswordFormData({
+                    ...passwordFormData,
+                    confirmPassword: e.target.value,
+                  })
+                }
+                placeholder="비밀번호를 다시 입력하세요"
+                required
+                minLength={6}
+              />
+            </Form.Group>
+
+            <div className="d-flex justify-content-end gap-2">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setPasswordError(null);
+                  setPasswordFormData({
+                    currentPassword: '',
+                    newPassword: '',
+                    confirmPassword: '',
+                  });
+                }}
+              >
+                취소
+              </Button>
+              <Button variant="primary" type="submit" disabled={changingPassword}>
+                {changingPassword ? (
+                  <>
+                    <span
+                      className="spinner-border spinner-border-sm me-1"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    변경 중...
+                  </>
+                ) : (
+                  '변경'
+                )}
+              </Button>
+            </div>
+          </Form>
+        </Modal.Body>
+      </Modal>
     </div>
   );
 }

@@ -238,15 +238,28 @@ export const setInitialPassword = async (
       // 현재 사용자는 자신의 문서를 생성할 수 있음
       await setDoc(doc(db, 'users', credential.user.uid), updatedUserData);
       
-      // 기존 문서 삭제는 권한 문제로 인해 건너뜀
-      // 관리자가 나중에 수동으로 삭제하거나, 배치 작업으로 정리할 수 있음
-      // 또는 Firestore 규칙을 수정하여 이메일로 조회한 문서를 삭제할 수 있도록 허용
+      // 기존 문서 삭제 시도
+      // Firestore 규칙에서 자신의 이메일과 일치하는 문서는 삭제 가능하도록 허용
       try {
-        // 기존 문서 삭제 시도 (권한이 있으면 삭제)
         await deleteDoc(userDoc.ref);
+        console.log('기존 문서 삭제 성공');
       } catch (deleteError: any) {
-        // 권한 오류는 무시 (기존 문서는 그대로 두고 새 문서 사용)
-        console.warn('기존 문서 삭제 실패 (무시됨):', deleteError);
+        // 권한 오류인 경우, 기존 문서에 표시를 남겨서 관리자가 나중에 정리할 수 있도록 함
+        console.warn('기존 문서 삭제 실패:', deleteError);
+        // 기존 문서에 삭제 표시를 남김 (선택사항)
+        try {
+          await setDoc(
+            userDoc.ref,
+            {
+              _migrated: true,
+              _migratedTo: credential.user.uid,
+              _migratedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        } catch (markError) {
+          console.warn('기존 문서 마킹 실패:', markError);
+        }
       }
     } else {
       // 같은 문서 ID면 업데이트만
