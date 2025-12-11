@@ -182,13 +182,17 @@ export const signInWithEmail = async (
     };
   } catch (error: any) {
     console.error('이메일 로그인 오류:', error);
+    // 원본 오류의 code를 유지하면서 메시지만 변경
     if (error.code === 'auth/user-not-found') {
-      throw new Error('등록되지 않은 이메일입니다.');
+      error.message = '등록되지 않은 이메일입니다.';
+      throw error;
     } else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
       // 최신 Firebase SDK에서는 auth/invalid-credential로 통합됨
-      throw new Error('비밀번호가 올바르지 않습니다.');
+      error.message = '비밀번호가 올바르지 않습니다.';
+      throw error;
     } else if (error.code === 'auth/invalid-email') {
-      throw new Error('올바른 이메일 형식이 아닙니다.');
+      error.message = '올바른 이메일 형식이 아닙니다.';
+      throw error;
     }
     throw error;
   }
