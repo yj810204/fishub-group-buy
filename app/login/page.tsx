@@ -7,6 +7,8 @@ import { signInWithGoogle, signInWithEmail } from '@/lib/firebase/auth';
 import { useAuth } from '@/components/auth/AuthContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
+import { fetchSignInMethodsForEmail } from 'firebase/auth';
+import { auth } from '@/lib/firebase/config';
 import { loadSiteSettings } from '@/lib/siteSettings';
 import { SiteSettings } from '@/types';
 
@@ -64,13 +66,25 @@ export default function LoginPage() {
         const provider = userData.provider || null;
 
         // Firebase Auth에 계정이 있는지 확인 (provider가 email인 경우)
-        // 관리자가 추가한 회원은 UID가 없거나 빈 문자열이고,
-        // Firebase Auth에 계정이 없으면 비밀번호 설정이 필요함
         let needsPassword = false;
-        if (provider === 'email') {
-          // UID가 없거나 빈 문자열이면 관리자가 추가한 회원 (Firebase Auth에 계정 없음)
-          // UID가 있고 문서 ID와 다르면 이미 Firebase Auth에 계정이 있는 회원
-          needsPassword = !userData.uid || userData.uid === '' || userDoc.id === userData.uid;
+        if (provider === 'email' && auth) {
+          try {
+            // Firebase Auth에서 이메일로 로그인 방법 확인
+            const signInMethods = await fetchSignInMethodsForEmail(auth, email.toLowerCase().trim());
+            
+            // password 로그인 방법이 없으면 비밀번호 설정 필요
+            // (관리자가 추가한 회원이고 아직 비밀번호를 설정하지 않은 경우)
+            needsPassword = !signInMethods.includes('password');
+          } catch (error) {
+            // fetchSignInMethodsForEmail 실패 시 기존 로직 사용
+            console.warn('로그인 방법 확인 실패, 기존 로직 사용:', error);
+            const hasValidUid = userData.uid && userData.uid !== '';
+            const isSameId = userDoc.id === userData.uid;
+            
+            // UID가 없거나 빈 문자열이면 관리자가 추가한 회원 (Firebase Auth에 계정 없음)
+            // UID가 있고 문서 ID와 같으면 회원가입을 완료한 회원 (Firebase Auth에 계정 있음)
+            needsPassword = !hasValidUid || (hasValidUid && !isSameId);
+          }
         }
 
         setUserInfo({
