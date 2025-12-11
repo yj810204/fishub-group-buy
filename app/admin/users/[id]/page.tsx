@@ -8,8 +8,6 @@ import { useAuth } from '@/components/auth/AuthContext';
 import { isAdmin } from '@/lib/admin';
 import { doc, getDoc, updateDoc, deleteDoc, query, where, getDocs, orderBy, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase/config';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '@/lib/firebase/config';
 import { User, Order } from '@/types';
 import { isUserBlocked, getBlockStatus } from '@/lib/user';
 
@@ -221,7 +219,7 @@ export default function UserDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!db || !currentUser || !user || !app) {
+    if (!db || !currentUser || !user) {
       return;
     }
 
@@ -230,45 +228,15 @@ export default function UserDetailPage() {
       setError(null);
       setSuccess(false);
 
-      // Cloud Function을 통해 Firebase Authentication과 Firestore에서 모두 삭제
-      try {
-        const functions = getFunctions(app, 'us-central1'); // 리전 명시
-        const deleteUserFunction = httpsCallable(functions, 'deleteUser', {
-          timeout: 60000, // 60초 타임아웃
-        });
-        const result = await deleteUserFunction({ uid: user.uid });
-        console.log('회원 삭제 성공:', result.data);
-      } catch (functionError: any) {
-        // Cloud Function이 배포되지 않았거나 실패한 경우, Firestore만 삭제
-        console.warn('Cloud Function 호출 실패, Firestore만 삭제:', functionError);
-        
-        // CORS 오류나 네트워크 오류인 경우 Firestore만 삭제
-        const isCorsError = functionError.message?.includes('CORS') || 
-                           functionError.code === 'functions/unavailable' ||
-                           functionError.code === 'functions/not-found' ||
-                           functionError.message?.includes('Failed to fetch') ||
-                           functionError.message?.includes('ERR_FAILED') ||
-                           functionError.code === 'internal';
-        
-        if (isCorsError) {
-          // CORS 오류인 경우 Firestore만 삭제
-          await deleteDoc(doc(db, 'users', user.uid));
-          setSuccess(true);
-          setError('CORS 오류로 인해 Firestore에서만 삭제되었습니다. Firebase Authentication에서도 삭제하려면 Firebase Console에서 직접 삭제해주세요.');
-          setTimeout(() => {
-            router.push('/admin/users');
-          }, 2000);
-          return;
-        } else {
-          // 다른 오류는 다시 throw
-          throw functionError;
-        }
-      }
-
+      // Firestore에서 사용자 문서 삭제
+      await deleteDoc(doc(db, 'users', user.uid));
+      
       setSuccess(true);
+      setError('Firestore에서 사용자가 삭제되었습니다. Firebase Authentication에서도 삭제하려면 Firebase Console → Authentication → Users에서 수동으로 삭제해주세요.');
+      
       setTimeout(() => {
         router.push('/admin/users');
-      }, 1000);
+      }, 3000); // 사용자가 메시지를 읽을 수 있도록 3초 대기
     } catch (error: any) {
       console.error('회원 삭제 오류:', error);
       if (error.message) {
@@ -581,20 +549,28 @@ export default function UserDetailPage() {
       {/* 삭제 확인 모달 */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>회원 삭제</Modal.Title>
+          <Modal.Title>회원 삭제 확인</Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          <p>정말로 이 회원을 삭제하시겠습니까?</p>
-          <p className="text-danger small">
-            <strong>경고:</strong> 이 작업은 되돌릴 수 없습니다. 회원의 모든 데이터가 삭제됩니다.
+          <p>
+            정말로 이 회원 (<strong>{user.displayName || user.email}</strong>)을
+            삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
           </p>
+          <Alert variant="info">
+            <strong>주의사항:</strong>
+            <ul className="mb-0 mt-2">
+              <li>Firestore에서 사용자 정보가 삭제됩니다.</li>
+              <li>Firebase Authentication에서도 삭제하려면 Firebase Console → Authentication → Users에서 수동으로 삭제해주세요.</li>
+              <li>Firebase Console 링크: <a href="https://console.firebase.google.com/project/fishub-group-buy/authentication/users" target="_blank" rel="noopener noreferrer">여기 클릭</a></li>
+            </ul>
+          </Alert>
         </Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
             취소
           </Button>
           <Button variant="danger" onClick={handleDelete} disabled={saving}>
-            {saving ? '삭제 중...' : '삭제'}
+            {saving ? <Spinner animation="border" size="sm" /> : 'Firestore에서 삭제'}
           </Button>
         </Modal.Footer>
       </Modal>
