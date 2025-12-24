@@ -232,7 +232,7 @@ export default function LoginPage() {
   return (
     <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: '60vh' }}>
       <Card style={{ width: '100%', maxWidth: '400px' }}>
-        <Card.Body className="p-5">
+        <Card.Body className="p-3">
           <div className="text-center mb-4">
             <h2 className="mb-3">로그인</h2>
             <p className="text-muted">

@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Navbar as BootstrapNavbar, Nav, Container } from 'react-bootstrap';
+import { usePathname, useRouter } from 'next/navigation';
+import { Navbar as BootstrapNavbar, Nav, Container, Button } from 'react-bootstrap';
 import { LoginButton } from '../auth/LoginButton';
 import { useAuth } from '../auth/AuthContext';
 import { isAdmin } from '@/lib/admin';
@@ -11,8 +12,10 @@ import { SiteSettings } from '@/types';
 
 export const Navbar: React.FC = () => {
   const { user } = useAuth();
-  const adminEmail = user?.email;
+  const pathname = usePathname();
+  const router = useRouter();
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+  const isHomePage = pathname === '/';
 
   useEffect(() => {
     loadSiteSettings().then(setSiteSettings);
@@ -22,59 +25,61 @@ export const Navbar: React.FC = () => {
   const logoUrl = siteSettings?.logoUrl;
 
   return (
-    <BootstrapNavbar bg="light" expand="lg" className="shadow-sm">
+    <BootstrapNavbar 
+      bg="light" 
+      className="shadow-sm fixed-top"
+      style={{ zIndex: 1001 }}
+    >
       <Container>
-        <BootstrapNavbar.Brand as={Link} href="/" className="d-flex align-items-center">
-          {logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={siteName}
+        <div className="d-flex align-items-center">
+          {!isHomePage && (
+            <Button
+              variant="link"
+              className="p-0 me-2 text-decoration-none"
+              onClick={() => router.back()}
               style={{
-                height: '40px',
-                maxWidth: '200px',
-                objectFit: 'contain',
-                marginRight: '8px',
+                border: 'none',
+                background: 'none',
+                fontSize: '24px',
+                lineHeight: '1',
+                color: '#000',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
-            />
-          ) : (
-            <i className="bi bi-cart-check me-2"></i>
+            >
+              <i className="bi bi-chevron-left"></i>
+            </Button>
           )}
-          {siteName}
-        </BootstrapNavbar.Brand>
-        <BootstrapNavbar.Toggle aria-controls="basic-navbar-nav" />
-        <BootstrapNavbar.Collapse id="basic-navbar-nav">
-          <Nav className="me-auto">
-            <Nav.Link as={Link} href="/">
-              <i className="bi bi-house me-1"></i>
-              홈
+          <BootstrapNavbar.Brand as={Link} href="/" className="d-flex align-items-center">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={siteName}
+                style={{
+                  height: '40px',
+                  maxWidth: '200px',
+                  objectFit: 'contain',
+                  marginRight: '8px',
+                }}
+              />
+            ) : (
+              <i className="bi bi-cart-check me-2"></i>
+            )}
+            {siteName}
+          </BootstrapNavbar.Brand>
+        </div>
+        <div className="ms-auto d-flex align-items-center gap-2">
+          {user && isAdmin(user) && (
+            <Nav.Link as={Link} href="/admin" className="d-none d-md-block text-decoration-none">
+              <i className="bi bi-speedometer2 me-1"></i>
+              대시보드
             </Nav.Link>
-            <Nav.Link as={Link} href="/products">
-              <i className="bi bi-grid me-1"></i>
-              상품 목록
-            </Nav.Link>
-          </Nav>
-          <Nav>
-            {!user && (
-              <Nav.Link as={Link} href="/signup">
-                <i className="bi bi-person-plus me-1"></i>
-                회원가입
-              </Nav.Link>
-            )}
-            {user && (
-              <Nav.Link as={Link} href="/my">
-                <i className="bi bi-person-circle me-1"></i>
-                마이페이지
-              </Nav.Link>
-            )}
-            {user && isAdmin(user) && (
-              <Nav.Link as={Link} href="/admin">
-                <i className="bi bi-speedometer2 me-1"></i>
-                대시보드
-              </Nav.Link>
-            )}
-            <LoginButton />
-          </Nav>
-        </BootstrapNavbar.Collapse>
+          )}
+          <LoginButton />
+        </div>
       </Container>
     </BootstrapNavbar>
   );

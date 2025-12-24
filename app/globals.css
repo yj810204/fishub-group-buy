@@ -14,3 +14,15 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+.main-content {
+  padding-top: 56px !important;
+  padding-bottom: 64px !important;
+  min-height: calc(100vh - 144px);
+}
+
+.main-content > .container,
+.main-content > .container-fluid {
+  padding-top: 1.5rem !important;
+  padding-bottom: 1.5rem !important;
+}

@@ -3,6 +3,7 @@ import "./globals.css";
 import Script from "next/script";
 import { AuthProvider } from "@/components/auth/AuthContext";
 import { Navbar } from "@/components/common/Navbar";
+import { BottomNavigation } from "@/components/common/BottomNavigation";
 import { Container } from "react-bootstrap";
 
 export const metadata: Metadata = {
@@ -26,11 +27,12 @@ export default function RootLayout({
       <body>
         <AuthProvider>
           <Navbar />
-          <main className="py-4">
+          <main className="main-content">
             <Container>
               {children}
             </Container>
           </main>
+          <BottomNavigation />
         </AuthProvider>
       </body>
     </html>

@@ -4,7 +4,6 @@ import React from 'react';
 import { Button } from 'react-bootstrap';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/AuthContext';
-import { isAdmin } from '@/lib/admin';
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -21,7 +20,7 @@ export default function HomePage() {
         <p>
           구간별 할인 정책으로 인원이 많아질수록 더 큰 할인을 받을 수 있습니다.
         </p>
-        {!user ? (
+        {!user && (
           <p className="lead">
             <Link href="/login">
               <Button variant="primary" size="lg">
@@ -30,29 +29,6 @@ export default function HomePage() {
               </Button>
             </Link>
           </p>
-        ) : (
-          <div className="lead d-flex gap-2 flex-wrap justify-content-center">
-            <Link href="/products">
-              <Button variant="primary" size="lg">
-                <i className="bi bi-grid me-2"></i>
-                상품 둘러보기
-              </Button>
-            </Link>
-            <Link href="/my">
-              <Button variant="outline-primary" size="lg">
-                <i className="bi bi-person-circle me-2"></i>
-                마이페이지
-              </Button>
-            </Link>
-            {isAdmin(user) && (
-              <Link href="/admin">
-                <Button variant="success" size="lg">
-                  <i className="bi bi-speedometer2 me-2"></i>
-                  관리자 대시보드
-                </Button>
-              </Link>
-            )}
-          </div>
         )}
       </div>
 

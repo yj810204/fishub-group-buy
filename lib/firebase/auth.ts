@@ -9,7 +9,7 @@ import {
   sendPasswordResetEmail,
   fetchSignInMethodsForEmail,
 } from 'firebase/auth';
-import { auth } from './config';
+import { auth, db, getMissingEnvVars } from './config';
 import {
   doc,
   setDoc,
@@ -21,7 +21,6 @@ import {
   getDocs,
   deleteDoc,
 } from 'firebase/firestore';
-import { db } from './config';
 import { User } from '@/types';
 
 const googleProvider = new GoogleAuthProvider();
@@ -29,6 +28,15 @@ const googleProvider = new GoogleAuthProvider();
 // Google 로그인
 export const signInWithGoogle = async (): Promise<User> => {
   if (!auth || !db) {
+    const missingVars = getMissingEnvVars();
+    if (missingVars.length > 0) {
+      throw new Error(
+        `Firebase가 초기화되지 않았습니다. 환경 변수가 설정되지 않았습니다.\n` +
+        `누락된 변수: ${missingVars.join(', ')}\n` +
+        `프로젝트 루트에 .env.local 파일을 생성하고 Firebase 설정 정보를 추가하세요.\n` +
+        `자세한 내용은 FIREBASE_SETUP.md 파일을 참조하세요.`
+      );
+    }
     throw new Error('Firebase가 초기화되지 않았습니다. 환경 변수를 확인해주세요.');
   }
 

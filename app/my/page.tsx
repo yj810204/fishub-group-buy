@@ -30,6 +30,7 @@ export default function MyPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [productsMap, setProductsMap] = useState<Map<string, Product>>(new Map());
   const [loading, setLoading] = useState(true);
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
   const [hiddenOrderIds, setHiddenOrderIds] = useState<string[]>([]);
@@ -156,6 +157,7 @@ export default function MyPage() {
       // 숨긴 주문 필터링
       const visibleOrders = ordersData.filter(order => !hiddenOrders.includes(order.id));
       setOrders(visibleOrders);
+      setProductsMap(productsMap);
     } catch (error) {
       console.error('주문 로드 오류:', error);
     } finally {
@@ -319,6 +321,14 @@ export default function MyPage() {
                 배송지 등록
               </Button>
             </Link>
+            {isAdmin(user) && (
+              <Link href="/admin">
+                <Button variant="success" size="sm">
+                  <i className="bi bi-speedometer2 me-1"></i>
+                  관리자 대시보드
+                </Button>
+              </Link>
+            )}
             {!isAdmin(user) && (
               <Button
                 variant="outline-danger"
@@ -350,101 +360,166 @@ export default function MyPage() {
 
       <Card>
         <Card.Body>
-          <h5 className="mb-3">내 주문 내역</h5>
+          <h5 className="mb-4">내 주문 내역</h5>
           {orders.length === 0 ? (
             <Alert variant="info">
               주문 내역이 없습니다.{' '}
               <Link href="/products">제품 둘러보기</Link>
             </Alert>
           ) : (
-            <Table responsive>
-              <thead>
-                <tr>
-                  <th>주문 ID</th>
-                  <th>참여 수량</th>
-                  <th>단가</th>
-                  <th>총 가격</th>
-                  <th>상태</th>
-                  <th>주문 일시</th>
-                  <th>상세</th>
-                  <th>작업</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id}>
-                    <td>{order.id}</td>
-                    <td>{order.quantity}개</td>
-                    <td>{order.finalPrice.toLocaleString()}원</td>
-                    <td>{order.totalPrice.toLocaleString()}원</td>
-                    <td>{getStatusBadge(order.status)}</td>
-                    <td>
-                      {order.createdAt.toLocaleDateString('ko-KR')}{' '}
-                      {order.createdAt.toLocaleTimeString('ko-KR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </td>
-                    <td>
-                      <Link href={`/my/orders/${order.id}`}>
-                        <i className="bi bi-arrow-right-circle"></i>
-                      </Link>
-                    </td>
-                    <td>
-                      {order.status === 'pending' ? (
-                        <Button
-                          variant="outline-danger"
-                          size="sm"
-                          onClick={() => handleCancelOrder(order)}
-                          disabled={cancellingOrderId === order.id}
-                        >
-                          {cancellingOrderId === order.id ? (
-                            <>
-                              <span
-                                className="spinner-border spinner-border-sm me-1"
-                                role="status"
-                                aria-hidden="true"
-                              ></span>
-                              취소 중...
-                            </>
+            <div className="d-flex flex-column gap-3">
+              {orders.map((order) => {
+                const product = productsMap.get(order.productId);
+                return (
+                  <Card
+                    key={order.id}
+                    className="border"
+                    style={{
+                      transition: 'box-shadow 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <Card.Body>
+                      <div className="d-flex flex-column flex-md-row gap-3">
+                        {/* 제품 이미지 */}
+                        <div style={{ flexShrink: 0 }}>
+                          {product?.imageUrls?.[0] || product?.imageUrl ? (
+                            <img
+                              src={product.imageUrls?.[0] || product.imageUrl}
+                              alt={product?.name || '제품 이미지'}
+                              style={{
+                                width: '100px',
+                                height: '100px',
+                                objectFit: 'cover',
+                                borderRadius: '8px',
+                              }}
+                            />
                           ) : (
-                            <>
-                              <i className="bi bi-x-circle me-1"></i>
-                              취소
-                            </>
+                            <div
+                              style={{
+                                width: '100px',
+                                height: '100px',
+                                backgroundColor: '#f0f0f0',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#999',
+                              }}
+                            >
+                              <i className="bi bi-image fs-3"></i>
+                            </div>
                           )}
-                        </Button>
-                      ) : order.status === 'cancelled' ? (
-                        <Button
-                          variant="outline-secondary"
-                          size="sm"
-                          onClick={() => handleHideOrder(order.id)}
-                          disabled={hidingOrderId === order.id}
-                        >
-                          {hidingOrderId === order.id ? (
-                            <>
-                              <span
-                                className="spinner-border spinner-border-sm me-1"
-                                role="status"
-                                aria-hidden="true"
-                              ></span>
-                              처리 중...
-                            </>
-                          ) : (
-                            <>
-                              <i className="bi bi-eye-slash me-1"></i>
-                              숨기기
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <span className="text-muted">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
+                        </div>
+
+                        {/* 주문 정보 */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start mb-3 gap-2">
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <h6 className="mb-1" style={{ wordBreak: 'break-word' }}>
+                                {product?.name || '제품 정보 없음'}
+                              </h6>
+                              <p className="text-muted small mb-0" style={{ fontSize: '0.875rem' }}>
+                                {order.createdAt.toLocaleDateString('ko-KR', {
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                })}{' '}
+                                {order.createdAt.toLocaleTimeString('ko-KR', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </p>
+                            </div>
+                            <div className="text-md-end">
+                              {getStatusBadge(order.status)}
+                            </div>
+                          </div>
+
+                          <div className="row g-3 align-items-end">
+                            <div className="col-6 col-md-3">
+                              <div className="text-muted small mb-1">참여 수량</div>
+                              <div className="fw-semibold">{order.quantity}개</div>
+                            </div>
+                            <div className="col-6 col-md-3">
+                              <div className="text-muted small mb-1">단가</div>
+                              <div className="fw-semibold">
+                                {order.finalPrice.toLocaleString()}원
+                              </div>
+                            </div>
+                            <div className="col-12 col-md-3">
+                              <div className="text-muted small mb-1">총 가격</div>
+                              <div className="fw-bold text-primary" style={{ fontSize: '1.25rem' }}>
+                                {order.totalPrice.toLocaleString()}원
+                              </div>
+                            </div>
+                            <div className="col-12 col-md-3">
+                              <div className="d-flex flex-column flex-md-row gap-2 justify-content-md-end">
+                                <Link href={`/my/orders/${order.id}`}>
+                                  <Button variant="outline-primary" size="sm" className="w-100 w-md-auto">
+                                    <i className="bi bi-arrow-right me-1"></i>
+                                    상세보기
+                                  </Button>
+                                </Link>
+                                {order.status === 'pending' && (
+                                  <Button
+                                    variant="outline-danger"
+                                    size="sm"
+                                    onClick={() => handleCancelOrder(order)}
+                                    disabled={cancellingOrderId === order.id}
+                                    className="w-100 w-md-auto"
+                                  >
+                                    {cancellingOrderId === order.id ? (
+                                      <span
+                                        className="spinner-border spinner-border-sm"
+                                        role="status"
+                                        aria-hidden="true"
+                                      ></span>
+                                    ) : (
+                                      <>
+                                        <i className="bi bi-x-circle me-1"></i>
+                                        취소
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                                {order.status === 'cancelled' && (
+                                  <Button
+                                    variant="outline-secondary"
+                                    size="sm"
+                                    onClick={() => handleHideOrder(order.id)}
+                                    disabled={hidingOrderId === order.id}
+                                    className="w-100 w-md-auto"
+                                  >
+                                    {hidingOrderId === order.id ? (
+                                      <span
+                                        className="spinner-border spinner-border-sm"
+                                        role="status"
+                                        aria-hidden="true"
+                                      ></span>
+                                    ) : (
+                                      <>
+                                        <i className="bi bi-eye-slash me-1"></i>
+                                        숨기기
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card.Body>
+                  </Card>
+                );
+              })}
+            </div>
           )}
         </Card.Body>
       </Card>
